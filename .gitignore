@@ -13,6 +13,8 @@ logs/
 # Workspace artifacts
 Output.txt
 nul
+ANALYSIS_NOTES.md
+CodexReviewFeedback.md
 
 # Non-repro manuscript assets (excluded from code/data repo)
 paper/
@@ -31,8 +33,34 @@ data/raw/chicago_network.pkl
 data/raw/aadt/
 data/raw/aadt_us32/
 data/external/camera_catalog/
+data/external/census/
+data/processed/
+data/raw/.gitkeep
+data/raw/chicago_cameras.geojson
+data/raw/new_hampshire_cameras.geojson
+data/raw/vermont_cameras.geojson
+data/raw/*_cameras_old.geojson
+data/raw/*_cameras_comprehensive.geojson
 
 # Generated run outputs not part of baseline reproducibility package
 results/custom_roi*/
 results/custom_roi_smoke/
 results/metro_batch/
+results/chicago_validation/
+results/traffic_weighted/ENHANCED_RESULTS.md
+results/traffic_weighted/PSR_CALIBRATION.md
+results/traffic_weighted/RESULTS_SUMMARY.md
+results/traffic_weighted/archive_500_vehicle/
+results/traffic_weighted/within_city_variation_atlanta.csv
+
+# Local scripts not included in current reproducibility baseline
+scripts/analyze_within_city_variation.py
+scripts/cache_camera_catalog.py
+scripts/calibrate_psr_weights.py
+scripts/chicago_validation.py
+scripts/regenerate_figures.py
+scripts/road_network_simulation_fast.py
+scripts/road_network_simulation_gpu.py
+scripts/run_remaining_regions.bat
+scripts/run_road_simulation.bat
+scripts/run_road_simulation.sh
