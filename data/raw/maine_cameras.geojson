@@ -1,0 +1,1119 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.473617,
+          43.0851792
+        ]
+      },
+      "properties": {
+        "id": 60434388,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "charge": "$1.00",
+          "direction": "355;175",
+          "fee": "yes",
+          "highway": "toll_gantry",
+          "man_made": "surveillance",
+          "name": "Hooksett Main",
+          "opening_hours": "24/7",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "payment:cash": "no",
+          "payment:e_zpass": "yes",
+          "payment:license_plate": "yes",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic",
+          "toll": "yes"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.4737755,
+          43.0851603
+        ]
+      },
+      "properties": {
+        "id": 60435343,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "charge": "$1.00",
+          "direction": "355;175",
+          "fee": "yes",
+          "highway": "toll_gantry",
+          "man_made": "surveillance",
+          "name": "Hooksett Main",
+          "opening_hours": "24/7",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "payment:cash": "no",
+          "payment:e_zpass": "yes",
+          "payment:license_plate": "yes",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic",
+          "toll": "yes"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.9648921,
+          43.274932
+        ]
+      },
+      "properties": {
+        "id": 195157879,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "charge": "0.75 USD",
+          "direction": "320;140",
+          "fee": "yes",
+          "highway": "toll_gantry",
+          "man_made": "surveillance",
+          "name": "Rochester Tolls",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "payment:cash": "no",
+          "payment:e_zpass": "yes",
+          "payment:license_plate": "yes",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic",
+          "toll": "yes"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.9647568,
+          43.2750224
+        ]
+      },
+      "properties": {
+        "id": 2271645880,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "charge": "0.75 USD",
+          "direction": "320;140",
+          "fee": "yes",
+          "highway": "toll_gantry",
+          "man_made": "surveillance",
+          "name": "Rochester Tolls",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "payment:cash": "no",
+          "payment:e_zpass": "yes",
+          "payment:license_plate": "yes",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic",
+          "toll": "yes"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.8421831,
+          43.1382877
+        ]
+      },
+      "properties": {
+        "id": 2271827725,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "charge": "0.75 USD",
+          "direction": "340;160",
+          "fee": "yes",
+          "highway": "toll_gantry",
+          "man_made": "surveillance",
+          "name": "Dover Point Tolls",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "payment:cash": "no",
+          "payment:e_zpass": "yes",
+          "payment:license_plate": "yes",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic",
+          "toll": "yes"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.6484887,
+          43.1803721
+        ]
+      },
+      "properties": {
+        "id": 10074126632,
+        "tags": {
+          "highway": "toll_gantry",
+          "man_made": "surveillance",
+          "payment:e_zpass": "yes",
+          "surveillance:type": "ALPR"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.6488217,
+          43.1801251
+        ]
+      },
+      "properties": {
+        "id": 10074126633,
+        "tags": {
+          "highway": "toll_gantry",
+          "man_made": "surveillance",
+          "payment:e_zpass": "yes",
+          "surveillance": "public",
+          "surveillance:type": "ALPR"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.8419611,
+          43.1383406
+        ]
+      },
+      "properties": {
+        "id": 11224218838,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "charge": "0.75 USD",
+          "direction": "340;160",
+          "fee": "yes",
+          "highway": "toll_gantry",
+          "man_made": "surveillance",
+          "name": "Dover Point Tolls",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "payment:cash": "no",
+          "payment:e_zpass": "yes",
+          "payment:license_plate": "yes",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic",
+          "toll": "yes"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.4742728,
+          43.085255
+        ]
+      },
+      "properties": {
+        "id": 12929809715,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "direction": "335",
+          "man_made": "surveillance",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "surveillance": "traffic",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.4741872,
+          43.0852622
+        ]
+      },
+      "properties": {
+        "id": 12929809716,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "direction": "335",
+          "man_made": "surveillance",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "surveillance": "traffic",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.4741248,
+          43.0852699
+        ]
+      },
+      "properties": {
+        "id": 12929809717,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "direction": "335",
+          "man_made": "surveillance",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "surveillance": "traffic",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.4740497,
+          43.0852803
+        ]
+      },
+      "properties": {
+        "id": 12929809718,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "direction": "335",
+          "man_made": "surveillance",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "surveillance": "traffic",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.4739746,
+          43.0852891
+        ]
+      },
+      "properties": {
+        "id": 12929809719,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "direction": "335",
+          "man_made": "surveillance",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "surveillance": "traffic",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.4739129,
+          43.0852962
+        ]
+      },
+      "properties": {
+        "id": 12929809720,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "direction": "335",
+          "man_made": "surveillance",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "surveillance": "traffic",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.4735805,
+          43.0854966
+        ]
+      },
+      "properties": {
+        "id": 12929809721,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "direction": "155",
+          "man_made": "surveillance",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "surveillance": "traffic",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.4735221,
+          43.0855057
+        ]
+      },
+      "properties": {
+        "id": 12929809722,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "direction": "155",
+          "man_made": "surveillance",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "surveillance": "traffic",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.4734459,
+          43.0855151
+        ]
+      },
+      "properties": {
+        "id": 12929809723,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "direction": "155",
+          "man_made": "surveillance",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "surveillance": "traffic",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.4733682,
+          43.085523
+        ]
+      },
+      "properties": {
+        "id": 12929809724,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "direction": "155",
+          "man_made": "surveillance",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "surveillance": "traffic",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.4733077,
+          43.0855312
+        ]
+      },
+      "properties": {
+        "id": 12929809725,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "direction": "155",
+          "man_made": "surveillance",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "surveillance": "traffic",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.473233,
+          43.0855409
+        ]
+      },
+      "properties": {
+        "id": 12929809726,
+        "tags": {
+          "camera:mount": "pole",
+          "camera:type": "fixed",
+          "direction": "155",
+          "man_made": "surveillance",
+          "operator": "New Hampshire Bureau of Turnpikes",
+          "operator:wikidata": "Q124371913",
+          "surveillance": "traffic",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.6616831,
+          43.1552555
+        ]
+      },
+      "properties": {
+        "id": 12958572690,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "70",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.661632,
+          43.1556232
+        ]
+      },
+      "properties": {
+        "id": 12958624152,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "270",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.6592923,
+          43.1545498
+        ]
+      },
+      "properties": {
+        "id": 12958734939,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "200",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.6585182,
+          43.154649
+        ]
+      },
+      "properties": {
+        "id": 12958744777,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "10",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.6105039,
+          43.1783959
+        ]
+      },
+      "properties": {
+        "id": 13040341399,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "30",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "operator": "Kittery Police Department",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.3395149,
+          43.6321361
+        ]
+      },
+      "properties": {
+        "id": 13202695190,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "245",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance:type": "ALPR"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.3132792,
+          43.632681
+        ]
+      },
+      "properties": {
+        "id": 13205017697,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "100",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance:type": "ALPR"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.0060348,
+          43.0134801
+        ]
+      },
+      "properties": {
+        "id": 13233579261,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "340",
+          "man_made": "surveillance",
+          "operator": "Exeter High School",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "entrance"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.2180113,
+          44.0913961
+        ]
+      },
+      "properties": {
+        "id": 13250437473,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "65",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance:type": "ALPR"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.2148816,
+          44.0976383
+        ]
+      },
+      "properties": {
+        "id": 13250462678,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "145",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance:type": "ALPR"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.2200297,
+          44.1188149
+        ]
+      },
+      "properties": {
+        "id": 13250462854,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "120",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance:type": "ALPR"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.2123548,
+          44.0890149
+        ]
+      },
+      "properties": {
+        "id": 13250468124,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "315",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance:type": "ALPR"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.2190582,
+          44.0979794
+        ]
+      },
+      "properties": {
+        "id": 13250476819,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "50",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance:type": "ALPR"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.2125166,
+          44.0998113
+        ]
+      },
+      "properties": {
+        "id": 13250489904,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "200",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance:type": "ALPR"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.2235468,
+          44.0971659
+        ]
+      },
+      "properties": {
+        "id": 13300670381,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "90",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance:type": "ALPR"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.2919936,
+          43.6302685
+        ]
+      },
+      "properties": {
+        "id": 13322788001,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "208",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.2920256,
+          43.6301519
+        ]
+      },
+      "properties": {
+        "id": 13322788701,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "25",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.2110869,
+          44.0966165
+        ]
+      },
+      "properties": {
+        "id": 13353381503,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "140",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance:type": "ALPR"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.2227107,
+          44.0874458
+        ]
+      },
+      "properties": {
+        "id": 13354015811,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "20",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance:type": "ALPR"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.2108625,
+          44.0963173
+        ]
+      },
+      "properties": {
+        "id": 13354043826,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "140",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance:type": "ALPR"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.3269636,
+          43.6481701
+        ]
+      },
+      "properties": {
+        "id": 13360279301,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "220",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.2057024,
+          44.0975409
+        ]
+      },
+      "properties": {
+        "id": 13389565602,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "200",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance:type": "ALPR"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.2058362,
+          44.1002415
+        ]
+      },
+      "properties": {
+        "id": 13391032631,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "200",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance:type": "ALPR"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.4599109,
+          43.0455691
+        ]
+      },
+      "properties": {
+        "id": 13448521402,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "0;0;0;0;0;0;0;0",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -71.4612122,
+          43.0455
+        ]
+      },
+      "properties": {
+        "id": 13448523001,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "0",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.200885,
+          44.1004622
+        ]
+      },
+      "properties": {
+        "id": 13458413401,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "276",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -70.2962997,
+          43.730808
+        ]
+      },
+      "properties": {
+        "id": 13458414201,
+        "tags": {
+          "camera:type": "fixed",
+          "direction": "143",
+          "man_made": "surveillance",
+          "manufacturer": "Flock Safety",
+          "manufacturer:wikidata": "Q108485435",
+          "surveillance": "public",
+          "surveillance:type": "ALPR",
+          "surveillance:zone": "traffic"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,176 @@
+{
+  "atlanta": {
+    "display_name": "Atlanta, GA",
+    "n_cameras": 2273,
+    "area_km2": 7580.0,
+    "density": 0.2999,
+    "n_trips": 175389,
+    "n_vehicles": 5000,
+    "p1": {
+      "point": 0.6562,
+      "ci_lower": 0.6539,
+      "ci_upper": 0.6584
+    },
+    "p2": {
+      "point": 0.51,
+      "ci_lower": 0.5076,
+      "ci_upper": 0.5123
+    },
+    "u2": {
+      "point": 0.7783,
+      "ci_lower": 0.7644,
+      "ci_upper": 0.7928
+    },
+    "p2xu2": {
+      "point": 0.3969,
+      "ci_lower": 0.388,
+      "ci_upper": 0.4061
+    },
+    "avg_hits": 3.3
+  },
+  "memphis": {
+    "display_name": "Memphis, TN",
+    "n_cameras": 426,
+    "area_km2": 2747.1,
+    "density": 0.1551,
+    "n_trips": 175426,
+    "n_vehicles": 5000,
+    "p1": {
+      "point": 0.4556,
+      "ci_lower": 0.4532,
+      "ci_upper": 0.4579
+    },
+    "p2": {
+      "point": 0.3092,
+      "ci_lower": 0.3071,
+      "ci_upper": 0.3115
+    },
+    "u2": {
+      "point": 0.4326,
+      "ci_lower": 0.4184,
+      "ci_upper": 0.4481
+    },
+    "p2xu2": {
+      "point": 0.1338,
+      "ci_lower": 0.1285,
+      "ci_upper": 0.1396
+    },
+    "avg_hits": 1.52
+  },
+  "richmond": {
+    "display_name": "Richmond, VA",
+    "n_cameras": 348,
+    "area_km2": 1487.4,
+    "density": 0.234,
+    "n_trips": 175433,
+    "n_vehicles": 5000,
+    "p1": {
+      "point": 0.5189,
+      "ci_lower": 0.5165,
+      "ci_upper": 0.5212
+    },
+    "p2": {
+      "point": 0.3533,
+      "ci_lower": 0.351,
+      "ci_upper": 0.3556
+    },
+    "u2": {
+      "point": 0.4248,
+      "ci_lower": 0.4099,
+      "ci_upper": 0.4403
+    },
+    "p2xu2": {
+      "point": 0.1501,
+      "ci_lower": 0.1439,
+      "ci_upper": 0.1566
+    },
+    "avg_hits": 1.75
+  },
+  "charlotte": {
+    "display_name": "Charlotte, NC",
+    "n_cameras": 302,
+    "area_km2": 2583.9,
+    "density": 0.1169,
+    "n_trips": 175198,
+    "n_vehicles": 5000,
+    "p1": {
+      "point": 0.3882,
+      "ci_lower": 0.386,
+      "ci_upper": 0.3906
+    },
+    "p2": {
+      "point": 0.2419,
+      "ci_lower": 0.2399,
+      "ci_upper": 0.244
+    },
+    "u2": {
+      "point": 0.268,
+      "ci_lower": 0.2558,
+      "ci_upper": 0.2805
+    },
+    "p2xu2": {
+      "point": 0.0648,
+      "ci_lower": 0.0614,
+      "ci_upper": 0.0684
+    },
+    "avg_hits": 1.17
+  },
+  "lehigh_valley": {
+    "display_name": "Lehigh Valley, PA",
+    "n_cameras": 90,
+    "area_km2": 643.0,
+    "density": 0.14,
+    "n_trips": 175097,
+    "n_vehicles": 5000,
+    "p1": {
+      "point": 0.3898,
+      "ci_lower": 0.3875,
+      "ci_upper": 0.3921
+    },
+    "p2": {
+      "point": 0.1926,
+      "ci_lower": 0.1908,
+      "ci_upper": 0.1946
+    },
+    "u2": {
+      "point": 0.1372,
+      "ci_lower": 0.1279,
+      "ci_upper": 0.1466
+    },
+    "p2xu2": {
+      "point": 0.0264,
+      "ci_lower": 0.0244,
+      "ci_upper": 0.0285
+    },
+    "avg_hits": 0.92
+  },
+  "maine": {
+    "display_name": "Maine",
+    "n_cameras": 47,
+    "area_km2": 4585.0,
+    "density": 0.0103,
+    "n_trips": 175248,
+    "n_vehicles": 5000,
+    "p1": {
+      "point": 0.0348,
+      "ci_lower": 0.034,
+      "ci_upper": 0.0357
+    },
+    "p2": {
+      "point": 0.0257,
+      "ci_lower": 0.025,
+      "ci_upper": 0.0265
+    },
+    "u2": {
+      "point": 0.0368,
+      "ci_lower": 0.0255,
+      "ci_upper": 0.0484
+    },
+    "p2xu2": {
+      "point": 0.0009,
+      "ci_lower": 0.0006,
+      "ci_upper": 0.0013
+    },
+    "avg_hits": 0.08
+  }
+}

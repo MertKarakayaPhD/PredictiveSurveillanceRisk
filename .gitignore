@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+
+# Local tooling / caches
+.claude/
+.pytest_cache/
+cache/
+logs/
+
+# Workspace artifacts
+Output.txt
+nul
+
+# Non-repro manuscript assets (excluded from code/data repo)
+paper/
+proposal/
+figures/
+notebooks/
+Legacy/
+
+# Legacy duplicate folders
+dataraw/
+dataprocessed/
+
+# Large external/raw files not committed to GitHub
+data/raw/ChicagoTaxi2024.csv
+data/raw/chicago_network.pkl
+data/raw/aadt/
+data/raw/aadt_us32/
+data/external/camera_catalog/
+
+# Generated run outputs not part of baseline reproducibility package
+results/custom_roi*/
+results/custom_roi_smoke/
+results/metro_batch/

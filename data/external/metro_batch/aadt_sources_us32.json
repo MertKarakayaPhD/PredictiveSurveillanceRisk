@@ -1,0 +1,126 @@
+{
+  "generated_on": "2026-02-07",
+  "description": "AADT source links for states represented in metros_us_32.json",
+  "sources": {
+    "AZ": {
+      "primary_url": "https://azdot.gov/planning/transportation-data/traffic-monitoring-program/traffic-data",
+      "secondary_url": "https://adot.ms2soft.com/tcds/tsearch.asp?loc=Adot&mod=",
+      "notes": "ADOT Traffic Monitoring Program / TDMS access point."
+    },
+    "CA": {
+      "primary_url": "https://gis.data.ca.gov/datasets/Caltrans::annual-average-daily-traffic-aadt/about",
+      "secondary_url": "https://services3.arcgis.com/bWPjFyq029ChCGur/ArcGIS/rest/services/CHhighway/FeatureServer",
+      "notes": "Caltrans statewide AADT service/data portal."
+    },
+    "CO": {
+      "primary_url": "https://dtdapps.coloradodot.info/otis/",
+      "secondary_url": "https://www.codot.gov/programs/data",
+      "notes": "CDOT OTIS data interface."
+    },
+    "DC": {
+      "primary_url": "https://opendata.dc.gov/datasets/DDOT::traffic-volume/about",
+      "secondary_url": "https://opendata.dc.gov/",
+      "notes": "DDOT traffic volume open dataset."
+    },
+    "DE": {
+      "primary_url": "https://deldot.gov/Publications/manuals/traffic_counts/index.shtml",
+      "secondary_url": "https://deldot.gov/Programs/gis/index.shtml?dc=traffic_count_data",
+      "notes": "DelDOT traffic count publications and GIS traffic data pages."
+    },
+    "FL": {
+      "primary_url": "https://gis-fdot.opendata.arcgis.com/",
+      "secondary_url": "https://www.fdot.gov/statistics/trafficdata/",
+      "notes": "FDOT open GIS portal; filter for traffic/AADT layers."
+    },
+    "GA": {
+      "primary_url": "https://www.dot.ga.gov/GDOT/Pages/GISDataDownload.aspx",
+      "secondary_url": "https://gis-dp.dot.ga.gov/arcgis/rest/services",
+      "notes": "GDOT GIS traffic count/AADT layers."
+    },
+    "IL": {
+      "primary_url": "https://data-idot.opendata.arcgis.com/",
+      "secondary_url": "https://idot.maps.arcgis.com/home/index.html",
+      "notes": "IDOT GIS data hub; search AADT/traffic count."
+    },
+    "MA": {
+      "primary_url": "https://mhd.ms2soft.com/tcds/tsearch.asp?loc=Mhd&mod=",
+      "secondary_url": "https://www.mass.gov/lists/traffic-volume-counts",
+      "notes": "MassDOT traffic count portal / historical count listings."
+    },
+    "MD": {
+      "primary_url": "https://maryland.maps.arcgis.com/apps/webappviewer/index.html?id=146e46f6511943f994ed16992decf4cc",
+      "secondary_url": "https://mdotsha.my.salesforce-sites.com/customercare/request_for_aadt",
+      "notes": "MDOT SHA annual average daily traffic map/request."
+    },
+    "MI": {
+      "primary_url": "https://mdot.maps.arcgis.com/home/item.html?id=8d82f7f7f5c748f8ae7f786f186de34d",
+      "secondary_url": "https://gis-michigan.opendata.arcgis.com/",
+      "notes": "MDOT annual average daily traffic map item."
+    },
+    "MN": {
+      "primary_url": "https://www.dot.state.mn.us/traffic/data/data-products.html",
+      "secondary_url": "https://dotapp7.dot.state.mn.us/tdms/",
+      "notes": "MnDOT traffic data products and map tools."
+    },
+    "MO": {
+      "primary_url": "https://www.modot.org/missouri-traffic-counts-map",
+      "secondary_url": "https://www.modot.org/traffic-volume-maps",
+      "notes": "MoDOT traffic counts map/products."
+    },
+    "NC": {
+      "primary_url": "https://connect.ncdot.gov/resources/gis/Pages/GIS-Data-Layers.aspx",
+      "secondary_url": "https://ncdot.maps.arcgis.com/home/index.html",
+      "notes": "NCDOT GIS layers; search traffic volume/AADT."
+    },
+    "NV": {
+      "primary_url": "https://gis-ndot.opendata.arcgis.com/",
+      "secondary_url": "https://www.dot.nv.gov/home/showpublisheddocument/20961/638487555669770000",
+      "notes": "NDOT GIS portal; AADT maps and manuals."
+    },
+    "NJ": {
+      "primary_url": "https://www.njdotlocateme.com/trafficdata/",
+      "secondary_url": "https://www.nj.gov/transportation/refdata/gis/",
+      "notes": "NJDOT traffic count data portal and GIS reference pages."
+    },
+    "NY": {
+      "primary_url": "https://gis.ny.gov/gisdata/inventories/details.cfm?DSID=1301",
+      "secondary_url": "https://www.dot.ny.gov/tdv",
+      "notes": "NYSDOT traffic count station inventory / TDV portal."
+    },
+    "OH": {
+      "primary_url": "https://services6.arcgis.com/ZIyYf7f1dA2byKzS/arcgis/rest/services/ODOTTrafficAADT/FeatureServer",
+      "secondary_url": "https://www.transportation.ohio.gov/programs/transportation-planning/roadway-information/traffic-monitoring",
+      "notes": "ODOT AADT feature service and traffic monitoring pages."
+    },
+    "OR": {
+      "primary_url": "https://www.oregon.gov/odot/Data/Pages/Traffic-Counting.aspx",
+      "secondary_url": "https://www.oregon.gov/odot/Data/Pages/default.aspx",
+      "notes": "ODOT traffic counting products."
+    },
+    "PA": {
+      "primary_url": "https://data-pennshare.opendata.arcgis.com/",
+      "secondary_url": "https://gis.penndot.gov/arcgis/rest/services",
+      "notes": "PennDOT open data portal; search traffic volume/AADT."
+    },
+    "TX": {
+      "primary_url": "https://gis-txdot.opendata.arcgis.com/search?collection=Dataset&tags=aadt",
+      "secondary_url": "https://txdot.maps.arcgis.com/home/index.html",
+      "notes": "TxDOT open data catalog filtered to AADT-tagged datasets."
+    },
+    "VA": {
+      "primary_url": "https://vdot.maps.arcgis.com/home/index.html",
+      "secondary_url": "https://www.virginiaroads.org/datasets",
+      "notes": "VDOT ArcGIS hub and data catalog."
+    },
+    "WA": {
+      "primary_url": "https://wsdot.wa.gov/data/tools/traffic-data-geospatial-portal",
+      "secondary_url": "https://wsdot.wa.gov/data",
+      "notes": "WSDOT traffic data geospatial portal."
+    },
+    "WI": {
+      "primary_url": "https://wisconsindot.gov/Pages/projects/data-plan/traf-counts/default.aspx",
+      "secondary_url": "https://wisconsindot.gov/Pages/projects/data-plan/default.aspx",
+      "notes": "WisDOT traffic count data and planning datasets."
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "region": "maine",
+  "state": "ME",
+  "n_edges": 149168,
+  "n_nodes": 60840,
+  "aadt_available": true,
+  "aadt_coverage": 0.49679555936930175,
+  "used_aadt": true,
+  "config": {
+    "aadt_buffer_m": 100.0,
+    "aadt_coverage_threshold": 0.005,
+    "traffic_blend_factor": 0.7,
+    "lambda_traffic": 0.5,
+    "min_trip_distance_m": 8047.0,
+    "max_trip_distance_m": 16093.0,
+    "normalize_method": "log",
+    "clip_percentile": 99.0
+  }
+}

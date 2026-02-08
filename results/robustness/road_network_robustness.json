@@ -1,0 +1,582 @@
+{
+  "camera_removal": {
+    "region": "atlanta",
+    "base_psr": 0.7882220234758386,
+    "trials": [
+      {
+        "removal_fraction": 0.3,
+        "trial": 0,
+        "seed": 3042,
+        "remaining_cameras": 1591,
+        "density_km2": 0.20719922902612453,
+        "u2": 0.41193060754391014,
+        "u2_ci_lower": 0.3956017852001152,
+        "u2_ci_upper": 0.4281600921393608,
+        "n_valid_u2": 3473,
+        "acc5": 0.8869013271783035,
+        "pred_coverage": 0.996836353178027,
+        "psr": 0.6883154319831571,
+        "psr_level": "MODERATE-HIGH"
+      },
+      {
+        "removal_fraction": 0.3,
+        "trial": 1,
+        "seed": 13015,
+        "remaining_cameras": 1591,
+        "density_km2": 0.20719922902612453,
+        "u2": 0.41015829218704625,
+        "u2_ci_lower": 0.393247168167296,
+        "u2_ci_upper": 0.4286959047342434,
+        "n_valid_u2": 3443,
+        "acc5": 0.8971732017379177,
+        "pred_coverage": 0.9994638932075269,
+        "psr": 0.6887293144816843,
+        "psr_level": "MODERATE-HIGH"
+      },
+      {
+        "removal_fraction": 0.3,
+        "trial": 2,
+        "seed": 22988,
+        "remaining_cameras": 1591,
+        "density_km2": 0.20719922902612453,
+        "u2": 0.41415556199304754,
+        "u2_ci_lower": 0.39716106604866747,
+        "u2_ci_upper": 0.43280706836616456,
+        "n_valid_u2": 3452,
+        "acc5": 0.8969615543613063,
+        "pred_coverage": 0.9945012590575055,
+        "psr": 0.6903187718624689,
+        "psr_level": "MODERATE-HIGH"
+      },
+      {
+        "removal_fraction": 0.3,
+        "trial": 3,
+        "seed": 32961,
+        "remaining_cameras": 1591,
+        "density_km2": 0.20719922902612453,
+        "u2": 0.4108264826776277,
+        "u2_ci_lower": 0.39194069289489136,
+        "u2_ci_upper": 0.430468291250734,
+        "n_valid_u2": 3406,
+        "acc5": 0.8985353309481217,
+        "pred_coverage": 0.9987158729272514,
+        "psr": 0.6891492821126303,
+        "psr_level": "MODERATE-HIGH"
+      },
+      {
+        "removal_fraction": 0.3,
+        "trial": 4,
+        "seed": 42934,
+        "remaining_cameras": 1591,
+        "density_km2": 0.20719922902612453,
+        "u2": 0.39916880891173945,
+        "u2_ci_lower": 0.38243359040274205,
+        "u2_ci_upper": 0.41845901171093974,
+        "n_valid_u2": 3501,
+        "acc5": 0.8935688893676613,
+        "pred_coverage": 0.9998384404114384,
+        "psr": 0.6838580694892875,
+        "psr_level": "MODERATE-HIGH"
+      },
+      {
+        "removal_fraction": 0.7,
+        "trial": 0,
+        "seed": 7042,
+        "remaining_cameras": 682,
+        "density_km2": 0.08881827416456124,
+        "u2": 0.26404417364813404,
+        "u2_ci_lower": 0.24633472962680883,
+        "u2_ci_upper": 0.2814261233815689,
+        "n_valid_u2": 2626,
+        "acc5": 0.8833376589670386,
+        "pred_coverage": 0.9959932790487269,
+        "psr": 0.454589688266003,
+        "psr_level": "MODERATE"
+      },
+      {
+        "removal_fraction": 0.7,
+        "trial": 1,
+        "seed": 17015,
+        "remaining_cameras": 682,
+        "density_km2": 0.08881827416456124,
+        "u2": 0.24732732732732732,
+        "u2_ci_lower": 0.23384947447447446,
+        "u2_ci_upper": 0.26313813813813813,
+        "n_valid_u2": 2664,
+        "acc5": 0.8970999745611804,
+        "pred_coverage": 0.9989834815756036,
+        "psr": 0.44917378266547975,
+        "psr_level": "MODERATE"
+      },
+      {
+        "removal_fraction": 0.7,
+        "trial": 2,
+        "seed": 26988,
+        "remaining_cameras": 682,
+        "density_km2": 0.08881827416456124,
+        "u2": 0.248807781201849,
+        "u2_ci_lower": 0.23495762711864407,
+        "u2_ci_upper": 0.26503274268104776,
+        "n_valid_u2": 2596,
+        "acc5": 0.8828828828828829,
+        "pred_coverage": 0.9924841259556823,
+        "psr": 0.44823287593481265,
+        "psr_level": "MODERATE"
+      },
+      {
+        "removal_fraction": 0.7,
+        "trial": 3,
+        "seed": 36961,
+        "remaining_cameras": 682,
+        "density_km2": 0.08881827416456124,
+        "u2": 0.24579767267267263,
+        "u2_ci_lower": 0.2304147897897898,
+        "u2_ci_upper": 0.26130818318318316,
+        "n_valid_u2": 2664,
+        "acc5": 0.8871740287386908,
+        "pred_coverage": 1.0,
+        "psr": 0.4474362900179193,
+        "psr_level": "MODERATE"
+      },
+      {
+        "removal_fraction": 0.7,
+        "trial": 4,
+        "seed": 46934,
+        "remaining_cameras": 682,
+        "density_km2": 0.08881827416456124,
+        "u2": 0.2369222303741746,
+        "u2_ci_lower": 0.22413793103448276,
+        "u2_ci_upper": 0.2512839325018342,
+        "n_valid_u2": 2726,
+        "acc5": 0.8918128654970761,
+        "pred_coverage": 0.9986035292624096,
+        "psr": 0.4441600892419395,
+        "psr_level": "MODERATE"
+      }
+    ],
+    "summary": {
+      "0.3": {
+        "n_trials": 5,
+        "remaining_cameras": 1591,
+        "psr_mean": 0.6880741739858456,
+        "psr_std": 0.0022116522659980818,
+        "psr_p05": 0.6847495419880615,
+        "psr_p95": 0.6900848739125012
+      },
+      "0.7": {
+        "n_trials": 5,
+        "remaining_cameras": 682,
+        "psr_mean": 0.44871854522523086,
+        "psr_std": 0.003386358981565572,
+        "psr_p05": 0.4448153293971355,
+        "psr_p95": 0.45350650714589835
+      }
+    },
+    "_note": "Camera removal implemented by filtering camera-hit sequences (no rerouting). Density uses the baseline convex-hull area from source_of_truth.json."
+  },
+  "markov_order_sensitivity": {
+    "orders": [
+      1,
+      2,
+      3
+    ],
+    "per_region": {
+      "atlanta": {
+        "1": {
+          "acc1": 0.5427419658667069,
+          "acc5": 0.9107485966168105,
+          "pred_coverage": 0.9975196362133113,
+          "n_predictions": 26543,
+          "n_no_prediction": 66,
+          "markov_order": 1,
+          "psr": 0.7886343691036877,
+          "psr_level": "HIGH"
+        },
+        "2": {
+          "acc1": 0.6192424498059727,
+          "acc5": 0.8740509532647208,
+          "pred_coverage": 0.9502966169632836,
+          "n_predictions": 23708,
+          "n_no_prediction": 1240,
+          "markov_order": 2,
+          "psr": 0.7845976283349578,
+          "psr_level": "HIGH"
+        },
+        "3": {
+          "acc1": 0.6597750352930462,
+          "acc5": 0.8463044765244319,
+          "pred_coverage": 0.8415344523645283,
+          "n_predictions": 21959,
+          "n_no_prediction": 4135,
+          "markov_order": 3,
+          "psr": 0.781545515893526,
+          "psr_level": "HIGH"
+        }
+      },
+      "memphis": {
+        "1": {
+          "acc1": 0.5907728181212525,
+          "acc5": 0.9253830779480346,
+          "pred_coverage": 1.0,
+          "n_predictions": 12008,
+          "n_no_prediction": 0,
+          "markov_order": 1,
+          "psr": 0.4901225211874667,
+          "psr_level": "MODERATE"
+        },
+        "2": {
+          "acc1": 0.6313502028201661,
+          "acc5": 0.9039018736720108,
+          "pred_coverage": 0.975320271288621,
+          "n_predictions": 10354,
+          "n_no_prediction": 262,
+          "markov_order": 2,
+          "psr": 0.48775958871710406,
+          "psr_level": "MODERATE"
+        },
+        "3": {
+          "acc1": 0.6805555555555556,
+          "acc5": 0.8901411657559198,
+          "pred_coverage": 0.9176765566234851,
+          "n_predictions": 8784,
+          "n_no_prediction": 788,
+          "markov_order": 3,
+          "psr": 0.48624591084633406,
+          "psr_level": "MODERATE"
+        }
+      },
+      "richmond": {
+        "1": {
+          "acc1": 0.5656639171923015,
+          "acc5": 0.9117742196344817,
+          "pred_coverage": 0.9995958289548137,
+          "n_predictions": 12366,
+          "n_no_prediction": 5,
+          "markov_order": 1,
+          "psr": 0.5268664447225706,
+          "psr_level": "MODERATE-HIGH"
+        },
+        "2": {
+          "acc1": 0.6273574909938546,
+          "acc5": 0.8959525323161687,
+          "pred_coverage": 0.9771197846567967,
+          "n_predictions": 9438,
+          "n_no_prediction": 221,
+          "markov_order": 2,
+          "psr": 0.5251260591175562,
+          "psr_level": "MODERATE-HIGH"
+        },
+        "3": {
+          "acc1": 0.6710526315789473,
+          "acc5": 0.8681102362204725,
+          "pred_coverage": 0.9136690647482014,
+          "n_predictions": 9652,
+          "n_no_prediction": 912,
+          "markov_order": 3,
+          "psr": 0.5220634065470295,
+          "psr_level": "MODERATE-HIGH"
+        }
+      },
+      "charlotte": {
+        "1": {
+          "acc1": 0.6002329768082177,
+          "acc5": 0.9564756962829609,
+          "pred_coverage": 1.0,
+          "n_predictions": 9443,
+          "n_no_prediction": 0,
+          "markov_order": 1,
+          "psr": 0.4131795945305988,
+          "psr_level": "MODERATE"
+        },
+        "2": {
+          "acc1": 0.7226950354609929,
+          "acc5": 0.9495271867612293,
+          "pred_coverage": 0.9822361546499477,
+          "n_predictions": 8460,
+          "n_no_prediction": 153,
+          "markov_order": 2,
+          "psr": 0.41241525848320837,
+          "psr_level": "MODERATE"
+        },
+        "3": {
+          "acc1": 0.7484123106985833,
+          "acc5": 0.9181729360039081,
+          "pred_coverage": 0.9405008040431886,
+          "n_predictions": 8188,
+          "n_no_prediction": 518,
+          "markov_order": 3,
+          "psr": 0.40896629089990305,
+          "psr_level": "MODERATE"
+        }
+      },
+      "lehigh_valley": {
+        "1": {
+          "acc1": 0.64271706186486,
+          "acc5": 0.9308254590836156,
+          "pred_coverage": 1.0,
+          "n_predictions": 5609,
+          "n_no_prediction": 0,
+          "markov_order": 1,
+          "psr": 0.3808221678956909,
+          "psr_level": "LOW-MODERATE"
+        },
+        "2": {
+          "acc1": 0.6468774094063223,
+          "acc5": 0.8912875867386276,
+          "pred_coverage": 0.9827618867209699,
+          "n_predictions": 5188,
+          "n_no_prediction": 91,
+          "markov_order": 2,
+          "psr": 0.37647300193774225,
+          "psr_level": "LOW-MODERATE"
+        },
+        "3": {
+          "acc1": 0.6989695242271432,
+          "acc5": 0.8857706643279982,
+          "pred_coverage": 0.9348227095716335,
+          "n_predictions": 4561,
+          "n_no_prediction": 318,
+          "markov_order": 3,
+          "psr": 0.37586614047257305,
+          "psr_level": "LOW-MODERATE"
+        }
+      },
+      "maine": {
+        "1": {
+          "acc1": 0.556930693069307,
+          "acc5": 0.9368811881188119,
+          "pred_coverage": 1.0,
+          "n_predictions": 808,
+          "n_no_prediction": 0,
+          "markov_order": 1,
+          "psr": 0.24460932974893312,
+          "psr_level": "LOW"
+        },
+        "2": {
+          "acc1": 0.7315914489311164,
+          "acc5": 0.9418052256532067,
+          "pred_coverage": 0.9905882352941177,
+          "n_predictions": 842,
+          "n_no_prediction": 8,
+          "markov_order": 2,
+          "psr": 0.24515097387771656,
+          "psr_level": "LOW"
+        },
+        "3": {
+          "acc1": 0.6887417218543046,
+          "acc5": 0.8741721854304636,
+          "pred_coverage": 0.9263803680981595,
+          "n_predictions": 453,
+          "n_no_prediction": 36,
+          "markov_order": 3,
+          "psr": 0.23771133945321482,
+          "psr_level": "LOW"
+        }
+      }
+    },
+    "rankings": {
+      "1": [
+        "atlanta",
+        "richmond",
+        "memphis",
+        "charlotte",
+        "lehigh_valley",
+        "maine"
+      ],
+      "2": [
+        "atlanta",
+        "richmond",
+        "memphis",
+        "charlotte",
+        "lehigh_valley",
+        "maine"
+      ],
+      "3": [
+        "atlanta",
+        "richmond",
+        "memphis",
+        "charlotte",
+        "lehigh_valley",
+        "maine"
+      ]
+    },
+    "kendall_tau_vs_order1": {
+      "2": 1.0,
+      "3": 1.0
+    }
+  },
+  "weight_sensitivity": {
+    "schemes": {
+      "ahp_default": {
+        "w_dens": 0.31,
+        "w_netpower": 0.58,
+        "w_pred": 0.11
+      },
+      "equal": {
+        "w_dens": 0.3333333333333333,
+        "w_netpower": 0.3333333333333333,
+        "w_pred": 0.3333333333333333
+      },
+      "density_focused": {
+        "w_dens": 0.5,
+        "w_netpower": 0.35,
+        "w_pred": 0.15
+      },
+      "prediction_focused": {
+        "w_dens": 0.3,
+        "w_netpower": 0.35,
+        "w_pred": 0.35
+      }
+    },
+    "per_scheme": {
+      "ahp_default": {
+        "atlanta": {
+          "psr": 0.7882220234758386,
+          "psr_level": "HIGH"
+        },
+        "memphis": {
+          "psr": 0.49074038261318287,
+          "psr_level": "MODERATE"
+        },
+        "richmond": {
+          "psr": 0.5268912805627776,
+          "psr_level": "MODERATE-HIGH"
+        },
+        "charlotte": {
+          "psr": 0.41312726793947313,
+          "psr_level": "MODERATE"
+        },
+        "lehigh_valley": {
+          "psr": 0.3812813673964932,
+          "psr_level": "LOW-MODERATE"
+        },
+        "maine": {
+          "psr": 0.2475923990558638,
+          "psr_level": "LOW"
+        }
+      },
+      "equal": {
+        "atlanta": {
+          "psr": 0.8453764251232567,
+          "psr_level": "HIGH"
+        },
+        "memphis": {
+          "psr": 0.6414025766304745,
+          "psr_level": "MODERATE-HIGH"
+        },
+        "richmond": {
+          "psr": 0.6859936187093534,
+          "psr_level": "MODERATE-HIGH"
+        },
+        "charlotte": {
+          "psr": 0.5830845403622215,
+          "psr_level": "MODERATE-HIGH"
+        },
+        "lehigh_valley": {
+          "psr": 0.5718727414238264,
+          "psr_level": "MODERATE-HIGH"
+        },
+        "maine": {
+          "psr": 0.43463068933455146,
+          "psr_level": "MODERATE"
+        }
+      },
+      "density_focused": {
+        "atlanta": {
+          "psr": 0.8487135554008796,
+          "psr_level": "HIGH"
+        },
+        "memphis": {
+          "psr": 0.591567205864133,
+          "psr_level": "MODERATE-HIGH"
+        },
+        "richmond": {
+          "psr": 0.6701697529734306,
+          "psr_level": "MODERATE-HIGH"
+        },
+        "charlotte": {
+          "psr": 0.5055497853196617,
+          "psr_level": "MODERATE-HIGH"
+        },
+        "lehigh_valley": {
+          "psr": 0.5103148244288871,
+          "psr_level": "MODERATE-HIGH"
+        },
+        "maine": {
+          "psr": 0.2944427795714212,
+          "psr_level": "LOW"
+        }
+      },
+      "prediction_focused": {
+        "atlanta": {
+          "psr": 0.8401558100389328,
+          "psr_level": "HIGH"
+        },
+        "memphis": {
+          "psr": 0.6387078719946199,
+          "psr_level": "MODERATE-HIGH"
+        },
+        "richmond": {
+          "psr": 0.6762011485352845,
+          "psr_level": "MODERATE-HIGH"
+        },
+        "charlotte": {
+          "psr": 0.5840684280672228,
+          "psr_level": "MODERATE-HIGH"
+        },
+        "lehigh_valley": {
+          "psr": 0.568183563183728,
+          "psr_level": "MODERATE-HIGH"
+        },
+        "maine": {
+          "psr": 0.44606870521123165,
+          "psr_level": "MODERATE"
+        }
+      }
+    },
+    "rankings": {
+      "ahp_default": [
+        "atlanta",
+        "richmond",
+        "memphis",
+        "charlotte",
+        "lehigh_valley",
+        "maine"
+      ],
+      "equal": [
+        "atlanta",
+        "richmond",
+        "memphis",
+        "charlotte",
+        "lehigh_valley",
+        "maine"
+      ],
+      "density_focused": [
+        "atlanta",
+        "richmond",
+        "memphis",
+        "lehigh_valley",
+        "charlotte",
+        "maine"
+      ],
+      "prediction_focused": [
+        "atlanta",
+        "richmond",
+        "memphis",
+        "charlotte",
+        "lehigh_valley",
+        "maine"
+      ]
+    },
+    "kendall_tau_vs_ahp": {
+      "equal": 1.0,
+      "density_focused": 0.8666666666666667,
+      "prediction_focused": 1.0
+    }
+  },
+  "_config": {
+    "seed": 42,
+    "source_of_truth": "data/source_of_truth.json",
+    "sim_dir": "data/processed"
+  }
+}

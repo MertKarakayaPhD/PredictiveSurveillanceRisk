@@ -1,0 +1,539 @@
+{
+  "generated_on": "2026-02-07",
+  "description": "US metro ROI batch configuration for progressive ALPR simulation.",
+  "boundary_policy": {
+    "mode": "circle_proxy",
+    "note": "Radius-based metro proxies for scalable runs. Replace with official polygon boundaries for publication-grade boundary analyses.",
+    "max_radius_km": 80.0
+  },
+  "metros": [
+    {
+      "id": "new_york_ny",
+      "display_name": "New York-Newark-Jersey City",
+      "primary_state": "NY",
+      "center_lat": 40.7128,
+      "center_lon": -74.006,
+      "radius_km": 50.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_paths": [
+        "data/raw/aadt_us32/NY/AADT.shp",
+        "data/raw/aadt_us32/NJ/Annual_Average_Daily_Traffic.shp",
+        "data/raw/aadt_us32/PA/pennsylvania_aadt.shp"
+      ]
+    },
+    {
+      "id": "los_angeles_ca",
+      "display_name": "Los Angeles-Long Beach-Anaheim",
+      "primary_state": "CA",
+      "center_lat": 34.0522,
+      "center_lon": -118.2437,
+      "radius_km": 50.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/CA/Traffic_Volumes_AADT.shp"
+    },
+    {
+      "id": "chicago_il",
+      "display_name": "Chicago-Naperville-Elgin",
+      "primary_state": "IL",
+      "center_lat": 41.8781,
+      "center_lon": -87.6298,
+      "radius_km": 45.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/IL/Average_Annual_Daily_Traffic_-_2022.shp"
+    },
+    {
+      "id": "dallas_fort_worth_tx",
+      "display_name": "Dallas-Fort Worth-Arlington",
+      "primary_state": "TX",
+      "center_lat": 32.7767,
+      "center_lon": -96.797,
+      "radius_km": 45.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/TX/TMB_RPT_SHORT_AADT_HIST.shp"
+    },
+    {
+      "id": "houston_tx",
+      "display_name": "Houston-The Woodlands-Sugar Land",
+      "primary_state": "TX",
+      "center_lat": 29.7604,
+      "center_lon": -95.3698,
+      "radius_km": 50.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/TX/TMB_RPT_SHORT_AADT_HIST.shp"
+    },
+    {
+      "id": "washington_dc",
+      "display_name": "Washington-Arlington-Alexandria",
+      "primary_state": "DC",
+      "center_lat": 38.9072,
+      "center_lon": -77.0369,
+      "radius_km": 40.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_paths": [
+        "data/raw/aadt_us32/DC/2023_Traffic_Volume.shp",
+        "data/raw/aadt_us32/MD/MDOT_SHA_Annual_Average_Daily_Traffic_(AADT)_Segments.shp",
+        "data/raw/aadt_us32/VA/VDOT_Bidirectional_Traffic_Volume_2024.shp"
+      ]
+    },
+    {
+      "id": "miami_fl",
+      "display_name": "Miami-Fort Lauderdale-West Palm Beach",
+      "primary_state": "FL",
+      "center_lat": 25.7617,
+      "center_lon": -80.1918,
+      "radius_km": 40.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/FL/Annual_Average_Daily_Traffic_Historical_TDA.shp"
+    },
+    {
+      "id": "philadelphia_pa",
+      "display_name": "Philadelphia-Camden-Wilmington",
+      "primary_state": "PA",
+      "center_lat": 39.9526,
+      "center_lon": -75.1652,
+      "radius_km": 40.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_paths": [
+        "data/raw/aadt_us32/PA/pennsylvania_aadt.shp",
+        "data/raw/aadt_us32/NJ/Annual_Average_Daily_Traffic.shp",
+        "data/raw/aadt_us32/DE/Delaware_Traffic_Counts_2.0.shp"
+      ]
+    },
+    {
+      "id": "atlanta_ga",
+      "display_name": "Atlanta-Sandy Springs-Roswell",
+      "primary_state": "GA",
+      "center_lat": 33.749,
+      "center_lon": -84.388,
+      "radius_km": 40.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/GA/georgia_aadt.shp"
+    },
+    {
+      "id": "phoenix_az",
+      "display_name": "Phoenix-Mesa-Chandler",
+      "primary_state": "AZ",
+      "center_lat": 33.4484,
+      "center_lon": -112.074,
+      "radius_km": 45.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/AZ/AADT_2023.shp"
+    },
+    {
+      "id": "boston_ma",
+      "display_name": "Boston-Cambridge-Newton",
+      "primary_state": "MA",
+      "center_lat": 42.3601,
+      "center_lon": -71.0589,
+      "radius_km": 35.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/MA/Traffic_Inventory_2024.shp"
+    },
+    {
+      "id": "san_francisco_oakland_ca",
+      "display_name": "San Francisco-Oakland-Berkeley",
+      "primary_state": "CA",
+      "center_lat": 37.7749,
+      "center_lon": -122.4194,
+      "radius_km": 40.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/CA/Traffic_Volumes_AADT.shp"
+    },
+    {
+      "id": "riverside_san_bernardino_ca",
+      "display_name": "Riverside-San Bernardino-Ontario",
+      "primary_state": "CA",
+      "center_lat": 33.9806,
+      "center_lon": -117.3755,
+      "radius_km": 40.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/CA/Traffic_Volumes_AADT.shp"
+    },
+    {
+      "id": "detroit_mi",
+      "display_name": "Detroit-Warren-Dearborn",
+      "primary_state": "MI",
+      "center_lat": 42.3314,
+      "center_lon": -83.0458,
+      "radius_km": 40.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/MI/Traffic_Volumes_(2024).shp"
+    },
+    {
+      "id": "seattle_wa",
+      "display_name": "Seattle-Tacoma-Bellevue",
+      "primary_state": "WA",
+      "center_lat": 47.6062,
+      "center_lon": -122.3321,
+      "radius_km": 40.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/WA/WSDOT_-_Traffic_Counts_(AADT)_Current.shp"
+    },
+    {
+      "id": "minneapolis_st_paul_mn",
+      "display_name": "Minneapolis-St. Paul-Bloomington",
+      "primary_state": "MN",
+      "center_lat": 44.9778,
+      "center_lon": -93.265,
+      "radius_km": 35.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_paths": [
+        "data/raw/aadt_us32/AZ/AADT_2023.shp",
+        "data/raw/aadt_us32/CA/Traffic_Volumes_AADT.shp",
+        "data/raw/aadt_us32/CO/Traffon2024_midpnt.shp",
+        "data/raw/aadt_us32/DC/2023_Traffic_Volume.shp",
+        "data/raw/aadt_us32/DE/Delaware_Traffic_Counts_2.0.shp",
+        "data/raw/aadt_us32/FL/Annual_Average_Daily_Traffic_Historical_TDA.shp",
+        "data/raw/aadt_us32/GA/georgia_aadt.shp",
+        "data/raw/aadt_us32/IL/Average_Annual_Daily_Traffic_-_2022.shp",
+        "data/raw/aadt_us32/MA/Traffic_Inventory_2024.shp",
+        "data/raw/aadt_us32/MD/MDOT_SHA_Annual_Average_Daily_Traffic_(AADT)_Segments.shp",
+        "data/raw/aadt_us32/ME/maine_aadt.shp",
+        "data/raw/aadt_us32/MI/Traffic_Volumes_(2024).shp",
+        "data/raw/aadt_us32/NC/north_carolina_aadt.shp",
+        "data/raw/aadt_us32/NJ/Annual_Average_Daily_Traffic.shp",
+        "data/raw/aadt_us32/NY/AADT.shp",
+        "data/raw/aadt_us32/OH/Traffic Count Segments.shp",
+        "data/raw/aadt_us32/OR - Portland/Traffic_Volume_Counts.shp",
+        "data/raw/aadt_us32/PA/pennsylvania_aadt.shp",
+        "data/raw/aadt_us32/TN/tennessee_aadt.shp",
+        "data/raw/aadt_us32/TX/TMB_RPT_SHORT_AADT_HIST.shp",
+        "data/raw/aadt_us32/VA/VDOT_Bidirectional_Traffic_Volume_2024.shp",
+        "data/raw/aadt_us32/WA/WSDOT_-_Traffic_Counts_(AADT)_Current.shp",
+        "data/raw/aadt_us32/WI/Traffic_Counts.shp"
+      ]
+    },
+    {
+      "id": "san_diego_ca",
+      "display_name": "San Diego-Chula Vista-Carlsbad",
+      "primary_state": "CA",
+      "center_lat": 32.7157,
+      "center_lon": -117.1611,
+      "radius_km": 35.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/CA/Traffic_Volumes_AADT.shp"
+    },
+    {
+      "id": "tampa_st_petersburg_fl",
+      "display_name": "Tampa-St. Petersburg-Clearwater",
+      "primary_state": "FL",
+      "center_lat": 27.9506,
+      "center_lon": -82.4572,
+      "radius_km": 35.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/FL/Annual_Average_Daily_Traffic_Historical_TDA.shp"
+    },
+    {
+      "id": "denver_co",
+      "display_name": "Denver-Aurora-Lakewood",
+      "primary_state": "CO",
+      "center_lat": 39.7392,
+      "center_lon": -104.9903,
+      "radius_km": 40.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/CO/Traffon2024_midpnt.shp"
+    },
+    {
+      "id": "baltimore_md",
+      "display_name": "Baltimore-Columbia-Towson",
+      "primary_state": "MD",
+      "center_lat": 39.2904,
+      "center_lon": -76.6122,
+      "radius_km": 35.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/MD/MDOT_SHA_Annual_Average_Daily_Traffic_(AADT)_Segments.shp"
+    },
+    {
+      "id": "st_louis_mo",
+      "display_name": "St. Louis",
+      "primary_state": "MO",
+      "center_lat": 38.627,
+      "center_lon": -90.1994,
+      "radius_km": 35.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_paths": [
+        "data/raw/aadt_us32/AZ/AADT_2023.shp",
+        "data/raw/aadt_us32/CA/Traffic_Volumes_AADT.shp",
+        "data/raw/aadt_us32/CO/Traffon2024_midpnt.shp",
+        "data/raw/aadt_us32/DC/2023_Traffic_Volume.shp",
+        "data/raw/aadt_us32/DE/Delaware_Traffic_Counts_2.0.shp",
+        "data/raw/aadt_us32/FL/Annual_Average_Daily_Traffic_Historical_TDA.shp",
+        "data/raw/aadt_us32/GA/georgia_aadt.shp",
+        "data/raw/aadt_us32/IL/Average_Annual_Daily_Traffic_-_2022.shp",
+        "data/raw/aadt_us32/MA/Traffic_Inventory_2024.shp",
+        "data/raw/aadt_us32/MD/MDOT_SHA_Annual_Average_Daily_Traffic_(AADT)_Segments.shp",
+        "data/raw/aadt_us32/ME/maine_aadt.shp",
+        "data/raw/aadt_us32/MI/Traffic_Volumes_(2024).shp",
+        "data/raw/aadt_us32/NC/north_carolina_aadt.shp",
+        "data/raw/aadt_us32/NJ/Annual_Average_Daily_Traffic.shp",
+        "data/raw/aadt_us32/NY/AADT.shp",
+        "data/raw/aadt_us32/OH/Traffic Count Segments.shp",
+        "data/raw/aadt_us32/OR - Portland/Traffic_Volume_Counts.shp",
+        "data/raw/aadt_us32/PA/pennsylvania_aadt.shp",
+        "data/raw/aadt_us32/TN/tennessee_aadt.shp",
+        "data/raw/aadt_us32/TX/TMB_RPT_SHORT_AADT_HIST.shp",
+        "data/raw/aadt_us32/VA/VDOT_Bidirectional_Traffic_Volume_2024.shp",
+        "data/raw/aadt_us32/WA/WSDOT_-_Traffic_Counts_(AADT)_Current.shp",
+        "data/raw/aadt_us32/WI/Traffic_Counts.shp"
+      ]
+    },
+    {
+      "id": "charlotte_nc",
+      "display_name": "Charlotte-Concord-Gastonia",
+      "primary_state": "NC",
+      "center_lat": 35.2271,
+      "center_lon": -80.8431,
+      "radius_km": 35.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/NC/north_carolina_aadt.shp"
+    },
+    {
+      "id": "orlando_fl",
+      "display_name": "Orlando-Kissimmee-Sanford",
+      "primary_state": "FL",
+      "center_lat": 28.5383,
+      "center_lon": -81.3792,
+      "radius_km": 35.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/FL/Annual_Average_Daily_Traffic_Historical_TDA.shp"
+    },
+    {
+      "id": "san_antonio_tx",
+      "display_name": "San Antonio-New Braunfels",
+      "primary_state": "TX",
+      "center_lat": 29.4241,
+      "center_lon": -98.4936,
+      "radius_km": 35.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/TX/TMB_RPT_SHORT_AADT_HIST.shp"
+    },
+    {
+      "id": "portland_or",
+      "display_name": "Portland-Vancouver-Hillsboro",
+      "primary_state": "OR",
+      "center_lat": 45.5152,
+      "center_lon": -122.6784,
+      "radius_km": 35.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_paths": [
+        "data/raw/aadt_us32/OR - Portland/Traffic_Volume_Counts.shp",
+        "data/raw/aadt_us32/WA/WSDOT_-_Traffic_Counts_(AADT)_Current.shp"
+      ]
+    },
+    {
+      "id": "sacramento_ca",
+      "display_name": "Sacramento-Roseville-Folsom",
+      "primary_state": "CA",
+      "center_lat": 38.5816,
+      "center_lon": -121.4944,
+      "radius_km": 35.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/CA/Traffic_Volumes_AADT.shp"
+    },
+    {
+      "id": "pittsburgh_pa",
+      "display_name": "Pittsburgh",
+      "primary_state": "PA",
+      "center_lat": 40.4406,
+      "center_lon": -79.9959,
+      "radius_km": 30.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/PA/pennsylvania_aadt.shp"
+    },
+    {
+      "id": "las_vegas_nv",
+      "display_name": "Las Vegas-Henderson-Paradise",
+      "primary_state": "NV",
+      "center_lat": 36.1699,
+      "center_lon": -115.1398,
+      "radius_km": 35.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_paths": [
+        "data/raw/aadt_us32/AZ/AADT_2023.shp",
+        "data/raw/aadt_us32/CA/Traffic_Volumes_AADT.shp",
+        "data/raw/aadt_us32/CO/Traffon2024_midpnt.shp",
+        "data/raw/aadt_us32/DC/2023_Traffic_Volume.shp",
+        "data/raw/aadt_us32/DE/Delaware_Traffic_Counts_2.0.shp",
+        "data/raw/aadt_us32/FL/Annual_Average_Daily_Traffic_Historical_TDA.shp",
+        "data/raw/aadt_us32/GA/georgia_aadt.shp",
+        "data/raw/aadt_us32/IL/Average_Annual_Daily_Traffic_-_2022.shp",
+        "data/raw/aadt_us32/MA/Traffic_Inventory_2024.shp",
+        "data/raw/aadt_us32/MD/MDOT_SHA_Annual_Average_Daily_Traffic_(AADT)_Segments.shp",
+        "data/raw/aadt_us32/ME/maine_aadt.shp",
+        "data/raw/aadt_us32/MI/Traffic_Volumes_(2024).shp",
+        "data/raw/aadt_us32/NC/north_carolina_aadt.shp",
+        "data/raw/aadt_us32/NJ/Annual_Average_Daily_Traffic.shp",
+        "data/raw/aadt_us32/NY/AADT.shp",
+        "data/raw/aadt_us32/OH/Traffic Count Segments.shp",
+        "data/raw/aadt_us32/OR - Portland/Traffic_Volume_Counts.shp",
+        "data/raw/aadt_us32/PA/pennsylvania_aadt.shp",
+        "data/raw/aadt_us32/TN/tennessee_aadt.shp",
+        "data/raw/aadt_us32/TX/TMB_RPT_SHORT_AADT_HIST.shp",
+        "data/raw/aadt_us32/VA/VDOT_Bidirectional_Traffic_Volume_2024.shp",
+        "data/raw/aadt_us32/WA/WSDOT_-_Traffic_Counts_(AADT)_Current.shp",
+        "data/raw/aadt_us32/WI/Traffic_Counts.shp"
+      ]
+    },
+    {
+      "id": "austin_tx",
+      "display_name": "Austin-Round Rock-Georgetown",
+      "primary_state": "TX",
+      "center_lat": 30.2672,
+      "center_lon": -97.7431,
+      "radius_km": 35.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/TX/TMB_RPT_SHORT_AADT_HIST.shp"
+    },
+    {
+      "id": "cincinnati_oh",
+      "display_name": "Cincinnati",
+      "primary_state": "OH",
+      "center_lat": 39.1031,
+      "center_lon": -84.512,
+      "radius_km": 30.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/OH/Traffic Count Segments.shp"
+    },
+    {
+      "id": "kansas_city_mo",
+      "display_name": "Kansas City",
+      "primary_state": "MO",
+      "center_lat": 39.0997,
+      "center_lon": -94.5786,
+      "radius_km": 35.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_paths": [
+        "data/raw/aadt_us32/AZ/AADT_2023.shp",
+        "data/raw/aadt_us32/CA/Traffic_Volumes_AADT.shp",
+        "data/raw/aadt_us32/CO/Traffon2024_midpnt.shp",
+        "data/raw/aadt_us32/DC/2023_Traffic_Volume.shp",
+        "data/raw/aadt_us32/DE/Delaware_Traffic_Counts_2.0.shp",
+        "data/raw/aadt_us32/FL/Annual_Average_Daily_Traffic_Historical_TDA.shp",
+        "data/raw/aadt_us32/GA/georgia_aadt.shp",
+        "data/raw/aadt_us32/IL/Average_Annual_Daily_Traffic_-_2022.shp",
+        "data/raw/aadt_us32/MA/Traffic_Inventory_2024.shp",
+        "data/raw/aadt_us32/MD/MDOT_SHA_Annual_Average_Daily_Traffic_(AADT)_Segments.shp",
+        "data/raw/aadt_us32/ME/maine_aadt.shp",
+        "data/raw/aadt_us32/MI/Traffic_Volumes_(2024).shp",
+        "data/raw/aadt_us32/NC/north_carolina_aadt.shp",
+        "data/raw/aadt_us32/NJ/Annual_Average_Daily_Traffic.shp",
+        "data/raw/aadt_us32/NY/AADT.shp",
+        "data/raw/aadt_us32/OH/Traffic Count Segments.shp",
+        "data/raw/aadt_us32/OR - Portland/Traffic_Volume_Counts.shp",
+        "data/raw/aadt_us32/PA/pennsylvania_aadt.shp",
+        "data/raw/aadt_us32/TN/tennessee_aadt.shp",
+        "data/raw/aadt_us32/TX/TMB_RPT_SHORT_AADT_HIST.shp",
+        "data/raw/aadt_us32/VA/VDOT_Bidirectional_Traffic_Volume_2024.shp",
+        "data/raw/aadt_us32/WA/WSDOT_-_Traffic_Counts_(AADT)_Current.shp",
+        "data/raw/aadt_us32/WI/Traffic_Counts.shp"
+      ]
+    },
+    {
+      "id": "columbus_oh",
+      "display_name": "Columbus",
+      "primary_state": "OH",
+      "center_lat": 39.9612,
+      "center_lon": -82.9988,
+      "radius_km": 30.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/OH/Traffic Count Segments.shp"
+    }
+  ],
+  "aadt_config_note": "Auto-wired to data/raw/aadt_us32 state datasets. Metros with missing primary-state AADT use downloaded US-state fallback paths via aadt_paths."
+}
