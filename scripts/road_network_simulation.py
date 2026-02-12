@@ -25,12 +25,12 @@ Date: January 2026
 import argparse
 import json
 import pickle
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from dataclasses import dataclass, field
 from functools import partial
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import geopandas as gpd
 import h3
@@ -48,11 +48,126 @@ from tqdm import tqdm
 _worker_data = {}
 
 
+class LRUCache:
+    """Tiny LRU cache for hot simulation lookups."""
+
+    def __init__(self, max_size: int) -> None:
+        self.max_size = max(1, int(max_size))
+        self._store: OrderedDict[Any, Any] = OrderedDict()
+
+    def get(self, key: Any) -> Any | None:
+        if key not in self._store:
+            return None
+        value = self._store.pop(key)
+        self._store[key] = value
+        return value
+
+    def set(self, key: Any, value: Any) -> None:
+        if key in self._store:
+            self._store.pop(key)
+        elif len(self._store) >= self.max_size:
+            self._store.popitem(last=False)
+        self._store[key] = value
+
+
+def _get_nearby_cameras_for_node(
+    node: int,
+    node_coords: dict[int, tuple[float, float]],
+    camera_tree: cKDTree,
+    camera_ids: list[int],
+    detection_radius_m: float,
+    node_camera_cache: LRUCache | None,
+) -> list[int]:
+    cached = node_camera_cache.get(node) if node_camera_cache else None
+    if cached is not None:
+        return cached
+
+    if node not in node_coords:
+        return []
+
+    lat, lon = node_coords[node]
+    x_m = lon * 111000 * np.cos(np.radians(lat))
+    y_m = lat * 111000
+    nearby_indices = camera_tree.query_ball_point([x_m, y_m], detection_radius_m)
+    nearby_camera_ids = [camera_ids[idx] for idx in nearby_indices]
+
+    if node_camera_cache is not None:
+        node_camera_cache.set(node, nearby_camera_ids)
+    return nearby_camera_ids
+
+
+def _compute_route_candidates(
+    origin: int,
+    destination: int,
+    G_simple: nx.DiGraph,
+    G_road: nx.MultiDiGraph,
+    k_shortest: int,
+    edge_traffic_weights: dict[tuple[int, int, int], float] | None,
+) -> tuple[list[list[int]], np.ndarray, np.ndarray]:
+    paths = find_k_shortest_paths(G_simple, origin, destination, k=k_shortest)
+    if not paths:
+        return [], np.array([], dtype=float), np.array([], dtype=float)
+
+    path_lengths: list[float] = []
+    path_traffic_means: list[float] = []
+
+    for path in paths:
+        length = 0.0
+        traffic_sum = 0.0
+        n_edges = 0
+
+        for i in range(len(path) - 1):
+            edge_data = G_road.get_edge_data(path[i], path[i + 1])
+            if not edge_data:
+                continue
+            first_edge = list(edge_data.values())[0]
+            length += float(first_edge.get("length", 100.0))
+
+            if edge_traffic_weights is not None:
+                edge_key = (path[i], path[i + 1], 0)
+                traffic_weight = float(edge_traffic_weights.get(edge_key, 0.5))
+                traffic_sum += traffic_weight
+                n_edges += 1
+
+        path_lengths.append(length)
+        path_traffic_means.append((traffic_sum / n_edges) if n_edges > 0 else 0.5)
+
+    return paths, np.asarray(path_lengths, dtype=float), np.asarray(path_traffic_means, dtype=float)
+
+
+def _get_route_candidates(
+    origin: int,
+    destination: int,
+    G_simple: nx.DiGraph,
+    G_road: nx.MultiDiGraph,
+    k_shortest: int,
+    edge_traffic_weights: dict[tuple[int, int, int], float] | None,
+    route_cache: LRUCache | None,
+) -> tuple[list[list[int]], np.ndarray, np.ndarray]:
+    cache_key = (int(origin), int(destination), int(k_shortest))
+    cached = route_cache.get(cache_key) if route_cache else None
+    if cached is not None:
+        return cached
+
+    route_data = _compute_route_candidates(
+        origin=origin,
+        destination=destination,
+        G_simple=G_simple,
+        G_road=G_road,
+        k_shortest=k_shortest,
+        edge_traffic_weights=edge_traffic_weights,
+    )
+    if route_cache is not None and len(route_data[0]) > 0:
+        route_cache.set(cache_key, route_data)
+    return route_data
+
+
 def _init_worker(G_simple_data, G_road_data, node_coords, camera_positions,
                  camera_tree_data, camera_ids, A_work, A_home, A_other,
                  edge_traffic_weights, k_shortest, p_return, detection_radius_m,
                  lambda_traffic, min_trip_distance_m, max_trip_distance_m,
-                 n_trips_per_vehicle, base_seed):
+                 n_trips_per_vehicle, base_seed, use_route_cache,
+                 use_node_camera_cache, route_cache_size, node_camera_cache_size):
     """Initialize worker process with shared data."""
     global _worker_data
     _worker_data = {
@@ -74,6 +189,8 @@ def _init_worker(G_simple_data, G_road_data, node_coords, camera_positions,
         'max_trip_distance_m': max_trip_distance_m,
         'n_trips_per_vehicle': n_trips_per_vehicle,
         'base_seed': base_seed,
+        'route_cache': LRUCache(route_cache_size) if use_route_cache else None,
+        'node_camera_cache': LRUCache(node_camera_cache_size) if use_node_camera_cache else None,
     }
 
 
@@ -108,6 +225,8 @@ def _simulate_single_vehicle(args):
     max_trip_distance_m = _worker_data['max_trip_distance_m']
     n_trips_per_vehicle = _worker_data['n_trips_per_vehicle']
     base_seed = _worker_data['base_seed']
+    route_cache = _worker_data['route_cache']
+    node_camera_cache = _worker_data['node_camera_cache']
 
     # Create deterministic RNG for this vehicle
     rng = np.random.default_rng(base_seed + vehicle_idx)
@@ -165,6 +284,8 @@ def _simulate_single_vehicle(args):
                 detection_radius_m=detection_radius_m,
                 edge_traffic_weights=edge_traffic_weights,
                 lambda_traffic=lambda_traffic,
+                route_cache=route_cache,
+                node_camera_cache=node_camera_cache,
                 rng=rng,
             )
 
@@ -709,6 +830,8 @@ def route_and_observe(
     detection_radius_m: float = 100.0,
     edge_traffic_weights: dict[tuple[int, int, int], float] | None = None,
     lambda_traffic: float = 0.5,
+    route_cache: LRUCache | None = None,
+    node_camera_cache: LRUCache | None = None,
     rng: np.random.Generator = None,
 ) -> tuple[list[int], list[int], float]:
     """
@@ -741,45 +864,19 @@ def route_and_observe(
     if origin == destination:
         return [origin], [], 0.0
 
-    # Find k-shortest paths using pre-converted simple graph
-    paths = find_k_shortest_paths(G_simple, origin, destination, k=k_shortest)
-
-    if not paths:
+    # Find cached k-shortest candidates with cached edge stats.
+    paths, path_lengths, path_traffic_means = _get_route_candidates(
+        origin=origin,
+        destination=destination,
+        G_simple=G_simple,
+        G_road=G_road,
+        k_shortest=k_shortest,
+        edge_traffic_weights=edge_traffic_weights,
+        route_cache=route_cache,
+    )
+    if len(paths) == 0:
         # No path found
         return [], [], 0.0
-
-    # Calculate path lengths and traffic means
-    path_lengths = []
-    path_traffic_means = []
-
-    for path in paths:
-        length = 0.0
-        traffic_sum = 0.0
-        n_edges = 0
-
-        for i in range(len(path) - 1):
-            edge_data = G_road.get_edge_data(path[i], path[i+1])
-            if edge_data:
-                # Handle MultiDiGraph - get first edge
-                first_edge = list(edge_data.values())[0]
-                length += first_edge.get('length', 100)
-
-                # Get traffic weight for this edge
-                if edge_traffic_weights is not None:
-                    # Try (u, v, 0) key first (most common)
-                    edge_key = (path[i], path[i+1], 0)
-                    traffic_weight = edge_traffic_weights.get(edge_key, 0.5)
-                    traffic_sum += traffic_weight
-                    n_edges += 1
-
-        path_lengths.append(length)
-        if n_edges > 0:
-            path_traffic_means.append(traffic_sum / n_edges)
-        else:
-            path_traffic_means.append(0.5)  # Default mid-range
-
-    path_lengths = np.array(path_lengths)
-    path_traffic_means = np.array(path_traffic_means)
 
     # Compute utility: U = -length + lambda_traffic * traffic_mean * scale + Gumbel
     # Higher traffic_mean = prefer routes on higher-traffic corridors
@@ -802,47 +899,22 @@ def route_and_observe(
     # Walk along route and detect cameras
     camera_hits = []
     seen_cameras = set()
-    cumulative_distance = 0.0
 
-    for i in range(len(route) - 1):
-        node = route[i]
-        next_node = route[i + 1]
-
-        if node not in node_coords:
+    # Inspect each unique node once; preserves deterministic first-seen order.
+    seen_nodes = set()
+    for node in route:
+        if node in seen_nodes:
             continue
-
-        lat, lon = node_coords[node]
-
-        # Convert to approximate meters for KD-tree query
-        # This is approximate - for production use projected coordinates
-        lat_center = lat
-        x_m = lon * 111000 * np.cos(np.radians(lat_center))
-        y_m = lat * 111000
-
-        # Query cameras within detection radius
-        nearby_indices = camera_tree.query_ball_point([x_m, y_m], detection_radius_m)
-
-        for idx in nearby_indices:
-            cam_id = camera_ids[idx]
-            if cam_id not in seen_cameras:
-                camera_hits.append(cam_id)
-                seen_cameras.add(cam_id)
-
-        # Update cumulative distance
-        edge_data = G_road.get_edge_data(node, next_node)
-        if edge_data:
-            first_edge = list(edge_data.values())[0]
-            cumulative_distance += first_edge.get('length', 100)
-
-    # Check final node too
-    if route and route[-1] in node_coords:
-        lat, lon = node_coords[route[-1]]
-        lat_center = lat
-        x_m = lon * 111000 * np.cos(np.radians(lat_center))
-        y_m = lat * 111000
-        nearby_indices = camera_tree.query_ball_point([x_m, y_m], detection_radius_m)
-        for idx in nearby_indices:
-            cam_id = camera_ids[idx]
+        seen_nodes.add(node)
+        nearby_camera_ids = _get_nearby_cameras_for_node(
+            node=node,
+            node_coords=node_coords,
+            camera_tree=camera_tree,
+            camera_ids=camera_ids,
+            detection_radius_m=detection_radius_m,
+            node_camera_cache=node_camera_cache,
+        )
+        for cam_id in nearby_camera_ids:
             if cam_id not in seen_cameras:
                 camera_hits.append(cam_id)
                 seen_cameras.add(cam_id)
@@ -915,6 +987,11 @@ def simulate_road_network_trips(
     # Parallel processing
     n_workers: int = 1,  # Set > 1 to enable multiprocessing
     mp_chunksize: int = 1,
+    # Caching controls (performance rewrite v1)
+    use_route_cache: bool = True,
+    use_node_camera_cache: bool = True,
+    route_cache_size: int = 200000,
+    node_camera_cache_size: int = 200000,
     traffic_blend_factor: float = 0.7,
     lambda_traffic: float = 0.5,
     # Trip distance constraints
@@ -950,6 +1027,10 @@ def simulate_road_network_trips(
         edge_traffic_weights: Edge-level traffic weights for route choice
         traffic_blend_factor: How much to weight traffic vs degree (0-1)
         lambda_traffic: Weight for traffic preference in route utility
+        use_route_cache: Reuse OD route candidates across trips
+        use_node_camera_cache: Reuse node->nearby-camera queries across trips
+        route_cache_size: Max OD entries per process
+        node_camera_cache_size: Max node camera-query entries per process
         min_trip_distance_m: Minimum trip distance (default 5 miles)
         max_trip_distance_m: Maximum trip distance (default 10 miles)
 
@@ -959,6 +1040,9 @@ def simulate_road_network_trips(
         - trip_metadata: OD pairs, route lengths, hit counts
         - network_stats: Road network size, camera coverage, P(observation)
     """
+    if route_cache_size <= 0 or node_camera_cache_size <= 0:
+        raise ValueError("route_cache_size and node_camera_cache_size must be >= 1")
+
     rng = np.random.default_rng(seed)
 
     if verbose:
@@ -1049,6 +1133,11 @@ def simulate_road_network_trips(
         print(f"Simulating {n_vehicles} vehicles x {n_trips_per_vehicle} trips...")
         if n_workers > 1:
             print(f"  Using {n_workers} worker processes")
+        print(
+            "  Caching: "
+            f"route_cache={'on' if use_route_cache else 'off'}({route_cache_size}), "
+            f"node_camera_cache={'on' if use_node_camera_cache else 'off'}({node_camera_cache_size})"
+        )
 
     all_trajectories = []
     trip_metadata = []
@@ -1077,7 +1166,8 @@ def simulate_road_network_trips(
             camera_tree, camera_ids, A_work, A_home, A_other,
             edge_traffic_weights, k_shortest, p_return, detection_radius_m,
             lambda_traffic, min_trip_distance_m, max_trip_distance_m,
-            n_trips_per_vehicle, seed
+            n_trips_per_vehicle, seed, use_route_cache,
+            use_node_camera_cache, route_cache_size, node_camera_cache_size
         )
 
         trajectories_by_idx = [None] * len(worker_args)
@@ -1119,6 +1209,8 @@ def simulate_road_network_trips(
 
     else:
         # Sequential execution (original code)
+        route_cache = LRUCache(route_cache_size) if use_route_cache else None
+        node_camera_cache = LRUCache(node_camera_cache_size) if use_node_camera_cache else None
         for vid in tqdm(vehicle_ids, disable=not verbose, desc="Simulating vehicles"):
             home_node = vehicle_homes[vid]
             activity_set = set()
@@ -1165,6 +1257,8 @@ def simulate_road_network_trips(
                         detection_radius_m=detection_radius_m,
                         edge_traffic_weights=edge_traffic_weights,
                         lambda_traffic=lambda_traffic,
+                        route_cache=route_cache,
+                        node_camera_cache=node_camera_cache,
                         rng=rng,
                     )
 
@@ -1242,6 +1336,10 @@ def simulate_road_network_trips(
             'h3_resolution': h3_resolution,
             'seed': seed,
             'mp_chunksize': mp_chunksize,
+            'use_route_cache': bool(use_route_cache),
+            'use_node_camera_cache': bool(use_node_camera_cache),
+            'route_cache_size': int(route_cache_size),
+            'node_camera_cache_size': int(node_camera_cache_size),
         },
     }
 

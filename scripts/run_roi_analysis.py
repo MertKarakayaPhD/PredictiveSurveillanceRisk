@@ -703,6 +703,19 @@ def main() -> int:
     parser.add_argument("--n-trips", type=int, default=10)
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--mp-chunksize", type=int, default=2, help="Multiprocessing chunksize for per-vehicle tasks.")
+    parser.add_argument("--disable-route-cache", action="store_true", help="Disable OD route candidate cache.")
+    parser.add_argument(
+        "--disable-node-camera-cache",
+        action="store_true",
+        help="Disable node-level camera query cache.",
+    )
+    parser.add_argument("--route-cache-size", type=int, default=200000, help="Max OD cache entries per process.")
+    parser.add_argument(
+        "--node-camera-cache-size",
+        type=int,
+        default=200000,
+        help="Max node camera cache entries per process.",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--k-shortest", type=int, default=3)
     parser.add_argument("--p-return", type=float, default=0.6)
@@ -735,6 +748,10 @@ def main() -> int:
         raise ValueError("--workers must be >= 1")
     if args.mp_chunksize <= 0:
         raise ValueError("--mp-chunksize must be >= 1")
+    if args.route_cache_size <= 0:
+        raise ValueError("--route-cache-size must be >= 1")
+    if args.node_camera_cache_size <= 0:
+        raise ValueError("--node-camera-cache-size must be >= 1")
 
     roi_name = slugify(args.name)
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -923,6 +940,10 @@ def main() -> int:
         seed=args.seed,
         n_workers=args.workers,
         mp_chunksize=args.mp_chunksize,
+        use_route_cache=not args.disable_route_cache,
+        use_node_camera_cache=not args.disable_node_camera_cache,
+        route_cache_size=args.route_cache_size,
+        node_camera_cache_size=args.node_camera_cache_size,
         verbose=True,
         traffic_weights=node_traffic,
         edge_traffic_weights=edge_traffic,
@@ -1021,6 +1042,16 @@ def main() -> int:
             "n_trips": args.n_trips,
             "workers": args.workers,
             "mp_chunksize": args.mp_chunksize,
+            "use_route_cache": simulation_result.get("parameters", {}).get(
+                "use_route_cache", not args.disable_route_cache
+            ),
+            "use_node_camera_cache": simulation_result.get("parameters", {}).get(
+                "use_node_camera_cache", not args.disable_node_camera_cache
+            ),
+            "route_cache_size": simulation_result.get("parameters", {}).get("route_cache_size", args.route_cache_size),
+            "node_camera_cache_size": simulation_result.get("parameters", {}).get(
+                "node_camera_cache_size", args.node_camera_cache_size
+            ),
             "seed": args.seed,
             "k_shortest": args.k_shortest,
             "p_return": args.p_return,

@@ -11,6 +11,10 @@ param(
     [int]$CooldownMinutes = 3,
     [int]$BlasThreads = 1,
     [int]$MpChunksize = 2,
+    [switch]$DisableRouteCache,
+    [switch]$DisableNodeCameraCache,
+    [int]$RouteCacheSize = 200000,
+    [int]$NodeCameraCacheSize = 200000,
     [string]$PythonExe = "python",
     [string]$LogsRoot = "logs/us32_unattended",
     [int]$KeepLastRuns = 12,
@@ -37,6 +41,8 @@ if ($Workers -le 0 -or $MinWorkers -le 0 -or $WorkerStepDown -le 0 -or $MaxRetri
 if ($MinWorkers -gt $Workers) { $MinWorkers = $Workers }
 if ($BlasThreads -le 0) { throw "BlasThreads must be >= 1" }
 if ($MpChunksize -le 0) { throw "MpChunksize must be >= 1" }
+if ($RouteCacheSize -le 0) { throw "RouteCacheSize must be >= 1" }
+if ($NodeCameraCacheSize -le 0) { throw "NodeCameraCacheSize must be >= 1" }
 
 $RunId = Get-Date -Format "yyyyMMdd_HHmmss"
 $LogsRootAbs = Join-Path $RepoRoot $LogsRoot
@@ -174,6 +180,10 @@ $state = @{
         cooldown_minutes = $CooldownMinutes
         blas_threads = $BlasThreads
         mp_chunksize = $MpChunksize
+        disable_route_cache = [bool]$DisableRouteCache
+        disable_node_camera_cache = [bool]$DisableNodeCameraCache
+        route_cache_size = $RouteCacheSize
+        node_camera_cache_size = $NodeCameraCacheSize
         skip_preflight = [bool]$SkipPreflight
         require_fresh_data = [bool]$RequireFreshData
         include_chicago = [bool]$IncludeChicago
@@ -198,7 +208,11 @@ Write-Log "Run ID: $RunId"
 Write-Log "Queue size: $($queue.Count)"
 Write-Log "Queue order: $($queue -join ', ')"
 Write-Log "Workers=$Workers MinWorkers=$MinWorkers StepDown=$WorkerStepDown Retries=$MaxRetriesPerMetro"
-Write-Log "BLAS threads=$BlasThreads, mp_chunksize=$MpChunksize"
+Write-Log (
+    "BLAS threads=$BlasThreads, mp_chunksize=$MpChunksize, " +
+    "route_cache=$([bool](-not $DisableRouteCache))($RouteCacheSize), " +
+    "node_camera_cache=$([bool](-not $DisableNodeCameraCache))($NodeCameraCacheSize)"
+)
 
 $env:OMP_NUM_THREADS = "$BlasThreads"
 $env:MKL_NUM_THREADS = "$BlasThreads"
@@ -257,10 +271,14 @@ foreach ($metro in $queue) {
             "--camera-catalog-csv", $CameraCatalogCsv,
             "--workers", "$workersThisAttempt",
             "--mp-chunksize", "$MpChunksize",
+            "--route-cache-size", "$RouteCacheSize",
+            "--node-camera-cache-size", "$NodeCameraCacheSize",
             "--blas-threads", "$BlasThreads",
             "--keep-last-runs", "$KeepLastRuns",
             "--skip-preflight"
         )
+        if ($DisableRouteCache) { $cmd += "--disable-route-cache" }
+        if ($DisableNodeCameraCache) { $cmd += "--disable-node-camera-cache" }
         if ($DryRun) { $cmd += "--dry-run" }
 
         $rc = 0

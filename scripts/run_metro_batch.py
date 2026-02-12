@@ -114,6 +114,10 @@ def matches_signature(summary_path: Path, expected: dict[str, Any]) -> bool:
         int(run_params.get("n_trips", -1)) == int(expected["n_trips"]),
         int(run_params.get("seed", -1)) == int(expected["seed"]),
         int(run_params.get("mp_chunksize", 1)) == int(expected.get("mp_chunksize", 1)),
+        bool(run_params.get("use_route_cache", True)) == bool(expected.get("use_route_cache", True)),
+        bool(run_params.get("use_node_camera_cache", True)) == bool(expected.get("use_node_camera_cache", True)),
+        int(run_params.get("route_cache_size", 200000)) == int(expected.get("route_cache_size", 200000)),
+        int(run_params.get("node_camera_cache_size", 200000)) == int(expected.get("node_camera_cache_size", 200000)),
         int(run_params.get("k_shortest", -1)) == int(expected["k_shortest"]),
         abs(float(run_params.get("p_return", -1.0)) - float(expected["p_return"])) < 1e-12,
         abs(float(run_params.get("detection_radius_m", -1.0)) - float(expected["detection_radius_m"])) < 1e-9,
@@ -176,6 +180,10 @@ def main() -> int:
     parser.add_argument("--n-trips", type=int, default=10)
     parser.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     parser.add_argument("--mp-chunksize", type=int, default=2)
+    parser.add_argument("--disable-route-cache", action="store_true")
+    parser.add_argument("--disable-node-camera-cache", action="store_true")
+    parser.add_argument("--route-cache-size", type=int, default=200000)
+    parser.add_argument("--node-camera-cache-size", type=int, default=200000)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--k-shortest", type=int, default=3)
     parser.add_argument("--p-return", type=float, default=0.6)
@@ -202,6 +210,10 @@ def main() -> int:
         raise ValueError("--blas-threads must be >= 1")
     if args.mp_chunksize <= 0:
         raise ValueError("--mp-chunksize must be >= 1")
+    if args.route_cache_size <= 0:
+        raise ValueError("--route-cache-size must be >= 1")
+    if args.node_camera_cache_size <= 0:
+        raise ValueError("--node-camera-cache-size must be >= 1")
 
     for env_var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
         os.environ[env_var] = str(args.blas_threads)
@@ -264,6 +276,10 @@ def main() -> int:
             "n_trips": args.n_trips,
             "workers": args.workers,
             "mp_chunksize": args.mp_chunksize,
+            "use_route_cache": not args.disable_route_cache,
+            "use_node_camera_cache": not args.disable_node_camera_cache,
+            "route_cache_size": args.route_cache_size,
+            "node_camera_cache_size": args.node_camera_cache_size,
             "seed": args.seed,
             "k_shortest": args.k_shortest,
             "p_return": args.p_return,
@@ -438,6 +454,10 @@ def main() -> int:
             "n_trips": args.n_trips,
             "seed": args.seed,
             "mp_chunksize": args.mp_chunksize,
+            "use_route_cache": not args.disable_route_cache,
+            "use_node_camera_cache": not args.disable_node_camera_cache,
+            "route_cache_size": args.route_cache_size,
+            "node_camera_cache_size": args.node_camera_cache_size,
             "k_shortest": args.k_shortest,
             "p_return": args.p_return,
             "detection_radius_m": args.detection_radius_m,
@@ -486,6 +506,10 @@ def main() -> int:
             str(args.workers),
             "--mp-chunksize",
             str(args.mp_chunksize),
+            "--route-cache-size",
+            str(args.route_cache_size),
+            "--node-camera-cache-size",
+            str(args.node_camera_cache_size),
             "--seed",
             str(args.seed),
             "--k-shortest",
@@ -505,6 +529,10 @@ def main() -> int:
             cmd.extend(["--boundary-geojson", str(boundary_path)])
         if args.require_aadt:
             cmd.append("--require-aadt")
+        if args.disable_route_cache:
+            cmd.append("--disable-route-cache")
+        if args.disable_node_camera_cache:
+            cmd.append("--disable-node-camera-cache")
         if aadt_path is not None:
             cmd.extend(["--aadt-path", str(aadt_path)])
         elif aadt_paths:

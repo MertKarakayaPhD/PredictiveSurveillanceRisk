@@ -250,7 +250,8 @@ Run queue (includes Chicago by default):
 powershell -ExecutionPolicy Bypass -File scripts/run_us32_unattended.ps1 `
   -Workers 14 -MinWorkers 10 -WorkerStepDown 2 `
   -MaxRetriesPerMetro 3 -CooldownMinutes 5 `
-  -BlasThreads 1 -MpChunksize 2
+  -BlasThreads 1 -MpChunksize 2 `
+  -RouteCacheSize 200000 -NodeCameraCacheSize 200000
 ```
 
 Resume after interruption/error:
@@ -259,13 +260,36 @@ Resume after interruption/error:
 powershell -ExecutionPolicy Bypass -File scripts/run_us32_unattended.ps1 `
   -Workers 14 -MinWorkers 10 -WorkerStepDown 2 `
   -MaxRetriesPerMetro 3 -CooldownMinutes 5 `
-  -BlasThreads 1 -MpChunksize 2
+  -BlasThreads 1 -MpChunksize 2 `
+  -RouteCacheSize 200000 -NodeCameraCacheSize 200000
 ```
 
 Notes:
 - The queue is safe to rerun; per-metro runs use `run_metro_batch.py`, which skips completed outputs.
 - Run logs/state are written under `logs/us32_unattended/<RUN_ID>/`.
 - Exclude Chicago only if needed by adding `-ExcludeMetroIds chicago_il`.
+- Route and node-camera caching are enabled by default in the unattended queue.
+
+## 5.2) Performance Rewrite Evaluation (Experimental Branch)
+
+Run this only on `exp/perf-stack-rewrite-v1` before deciding to adopt.
+
+Benchmark baseline vs optimized cache mode:
+
+```powershell
+python scripts/benchmark_perf_rewrite.py `
+  --metro-ids philadelphia_pa,chicago_il `
+  --modes baseline,optimized `
+  --n-vehicles 50 --n-trips 4 `
+  --workers 12 --mp-chunksize 2 `
+  --route-cache-size 200000 --node-camera-cache-size 200000 `
+  --csv-out results/perf_rewrite_bench/benchmark_perf_rewrite.csv
+```
+
+Interpretation:
+- `baseline`: route cache OFF + node-camera cache OFF
+- `optimized`: both caches ON
+- Compare `elapsed_sec` by metro and mode in the CSV.
 
 ## 6) Manuscript-Eligible New Metro Runs (Per-Metro, Not External Catalog)
 
