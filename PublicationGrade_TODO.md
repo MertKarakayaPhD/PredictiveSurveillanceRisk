@@ -233,6 +233,40 @@ python scripts/run_metro_batch.py `
 Resume behavior:
 - Re-run the same command; completed metros are skipped if signature-matched outputs already exist.
 
+## 5.1) Unattended 5-Day Queue (Current PC)
+
+Recommended for long unattended execution on the current workstation:
+- CPU: Intel i9-14900F (32 logical threads)
+- RAM: 32 GB
+- GPU: RTX 4070 SUPER (12 GB VRAM)
+
+Important:
+- Current simulation path is CPU/network-graph dominated; GPU offload is not the primary bottleneck.
+- Keep `--blas-threads 1` when using many workers.
+
+Run queue (Chicago excluded by default):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_us32_unattended.ps1 `
+  -Workers 14 -MinWorkers 10 -WorkerStepDown 2 `
+  -MaxRetriesPerMetro 3 -CooldownMinutes 5 `
+  -BlasThreads 1 -MpChunksize 2
+```
+
+Resume after interruption/error:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_us32_unattended.ps1 `
+  -Workers 14 -MinWorkers 10 -WorkerStepDown 2 `
+  -MaxRetriesPerMetro 3 -CooldownMinutes 5 `
+  -BlasThreads 1 -MpChunksize 2
+```
+
+Notes:
+- The queue is safe to rerun; per-metro runs use `run_metro_batch.py`, which skips completed outputs.
+- Run logs/state are written under `logs/us32_unattended/<RUN_ID>/`.
+- Include Chicago by adding `-IncludeChicago`.
+
 ## 6) Manuscript-Eligible New Metro Runs (Per-Metro, Not External Catalog)
 
 Important:

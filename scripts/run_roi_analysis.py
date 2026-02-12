@@ -702,6 +702,7 @@ def main() -> int:
     parser.add_argument("--n-vehicles", type=int, default=5000)
     parser.add_argument("--n-trips", type=int, default=10)
     parser.add_argument("--workers", type=int, default=1)
+    parser.add_argument("--mp-chunksize", type=int, default=2, help="Multiprocessing chunksize for per-vehicle tasks.")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--k-shortest", type=int, default=3)
     parser.add_argument("--p-return", type=float, default=0.6)
@@ -732,6 +733,8 @@ def main() -> int:
         raise ValueError("--n-vehicles and --n-trips must be > 0")
     if args.workers <= 0:
         raise ValueError("--workers must be >= 1")
+    if args.mp_chunksize <= 0:
+        raise ValueError("--mp-chunksize must be >= 1")
 
     roi_name = slugify(args.name)
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -919,6 +922,7 @@ def main() -> int:
         detection_radius_m=args.detection_radius_m,
         seed=args.seed,
         n_workers=args.workers,
+        mp_chunksize=args.mp_chunksize,
         verbose=True,
         traffic_weights=node_traffic,
         edge_traffic_weights=edge_traffic,
@@ -1016,6 +1020,7 @@ def main() -> int:
             "n_vehicles": args.n_vehicles,
             "n_trips": args.n_trips,
             "workers": args.workers,
+            "mp_chunksize": args.mp_chunksize,
             "seed": args.seed,
             "k_shortest": args.k_shortest,
             "p_return": args.p_return,

@@ -914,6 +914,7 @@ def simulate_road_network_trips(
     edge_traffic_weights: dict[tuple[int, int, int], float] | None = None,
     # Parallel processing
     n_workers: int = 1,  # Set > 1 to enable multiprocessing
+    mp_chunksize: int = 1,
     traffic_blend_factor: float = 0.7,
     lambda_traffic: float = 0.5,
     # Trip distance constraints
@@ -1082,10 +1083,13 @@ def simulate_road_network_trips(
         trajectories_by_idx = [None] * len(worker_args)
         trip_metadata_by_idx = [None] * len(worker_args)
 
+        if mp_chunksize <= 0:
+            raise ValueError("mp_chunksize must be >= 1")
+
         with Pool(processes=n_workers, initializer=_init_worker, initargs=init_args) as pool:
             # Use unordered completion for smoother progress updates.
             for vehicle_idx, trajectory, trip_meta_list in tqdm(
-                pool.imap_unordered(_simulate_single_vehicle, worker_args, chunksize=1),
+                pool.imap_unordered(_simulate_single_vehicle, worker_args, chunksize=mp_chunksize),
                 total=len(worker_args),
                 disable=not verbose,
                 desc="Simulating vehicles (parallel)",
@@ -1237,6 +1241,7 @@ def simulate_road_network_trips(
             'detection_radius_m': detection_radius_m,
             'h3_resolution': h3_resolution,
             'seed': seed,
+            'mp_chunksize': mp_chunksize,
         },
     }
 
