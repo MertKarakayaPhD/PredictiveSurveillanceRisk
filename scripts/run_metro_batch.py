@@ -114,6 +114,7 @@ def matches_signature(summary_path: Path, expected: dict[str, Any]) -> bool:
         int(run_params.get("n_trips", -1)) == int(expected["n_trips"]),
         int(run_params.get("seed", -1)) == int(expected["seed"]),
         int(run_params.get("mp_chunksize", 1)) == int(expected.get("mp_chunksize", 1)),
+        str(run_params.get("compute_backend", "cpu")) == str(expected.get("compute_backend", "cpu")),
         int(run_params.get("k_shortest", -1)) == int(expected["k_shortest"]),
         abs(float(run_params.get("p_return", -1.0)) - float(expected["p_return"])) < 1e-12,
         abs(float(run_params.get("detection_radius_m", -1.0)) - float(expected["detection_radius_m"])) < 1e-9,
@@ -176,6 +177,7 @@ def main() -> int:
     parser.add_argument("--n-trips", type=int, default=10)
     parser.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     parser.add_argument("--mp-chunksize", type=int, default=2)
+    parser.add_argument("--compute-backend", type=str, default="cpu")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--k-shortest", type=int, default=3)
     parser.add_argument("--p-return", type=float, default=0.6)
@@ -264,6 +266,7 @@ def main() -> int:
             "n_trips": args.n_trips,
             "workers": args.workers,
             "mp_chunksize": args.mp_chunksize,
+            "compute_backend": args.compute_backend,
             "seed": args.seed,
             "k_shortest": args.k_shortest,
             "p_return": args.p_return,
@@ -438,6 +441,7 @@ def main() -> int:
             "n_trips": args.n_trips,
             "seed": args.seed,
             "mp_chunksize": args.mp_chunksize,
+            "compute_backend": args.compute_backend,
             "k_shortest": args.k_shortest,
             "p_return": args.p_return,
             "detection_radius_m": args.detection_radius_m,
@@ -486,6 +490,8 @@ def main() -> int:
             str(args.workers),
             "--mp-chunksize",
             str(args.mp_chunksize),
+            "--compute-backend",
+            str(args.compute_backend),
             "--seed",
             str(args.seed),
             "--k-shortest",

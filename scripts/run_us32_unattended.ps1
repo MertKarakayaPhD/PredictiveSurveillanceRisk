@@ -11,6 +11,7 @@ param(
     [int]$CooldownMinutes = 3,
     [int]$BlasThreads = 1,
     [int]$MpChunksize = 2,
+    [string]$ComputeBackend = "cpu",
     [string]$PythonExe = "python",
     [string]$LogsRoot = "logs/us32_unattended",
     [int]$KeepLastRuns = 12,
@@ -174,6 +175,7 @@ $state = @{
         cooldown_minutes = $CooldownMinutes
         blas_threads = $BlasThreads
         mp_chunksize = $MpChunksize
+        compute_backend = $ComputeBackend
         skip_preflight = [bool]$SkipPreflight
         require_fresh_data = [bool]$RequireFreshData
         include_chicago = [bool]$IncludeChicago
@@ -198,7 +200,7 @@ Write-Log "Run ID: $RunId"
 Write-Log "Queue size: $($queue.Count)"
 Write-Log "Queue order: $($queue -join ', ')"
 Write-Log "Workers=$Workers MinWorkers=$MinWorkers StepDown=$WorkerStepDown Retries=$MaxRetriesPerMetro"
-Write-Log "BLAS threads=$BlasThreads, mp_chunksize=$MpChunksize"
+Write-Log "BLAS threads=$BlasThreads, mp_chunksize=$MpChunksize, compute_backend=$ComputeBackend"
 
 $env:OMP_NUM_THREADS = "$BlasThreads"
 $env:MKL_NUM_THREADS = "$BlasThreads"
@@ -257,6 +259,7 @@ foreach ($metro in $queue) {
             "--camera-catalog-csv", $CameraCatalogCsv,
             "--workers", "$workersThisAttempt",
             "--mp-chunksize", "$MpChunksize",
+            "--compute-backend", "$ComputeBackend",
             "--blas-threads", "$BlasThreads",
             "--keep-last-runs", "$KeepLastRuns",
             "--skip-preflight"

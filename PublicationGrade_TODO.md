@@ -267,6 +267,34 @@ Notes:
 - Run logs/state are written under `logs/us32_unattended/<RUN_ID>/`.
 - Exclude Chicago only if needed by adding `-ExcludeMetroIds chicago_il`.
 
+## 5.2) GPU Spike Evaluation (Separate Branch Only)
+
+Run only on `exp/gpu-accel-spike` branch for evaluation.
+
+Lightweight code-path validation (no metro simulation):
+
+```powershell
+python scripts/validate_gpu_backend.py --iterations 1000 --microbench-iters 5000
+```
+
+2-hour stability benchmark (small workload, multi-metro):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/run_gpu_spike_stability.ps1 `
+  -DurationHours 2 `
+  -MetroIds philadelphia_pa,chicago_il `
+  -Backends cpu,torch-cpu,torch-cuda `
+  -NVehicles 50 -NTrips 4 `
+  -WorkersCpu 12 -WorkersGpu 1 `
+  -MpChunksize 2 `
+  -StopOnFailure
+```
+
+Artifacts:
+- `logs/gpu_spike_stability/<RUN_ID>/stability.log`
+- `logs/gpu_spike_stability/<RUN_ID>/stability_summary.csv`
+- per-cycle benchmark CSVs in the same folder.
+
 ## 6) Manuscript-Eligible New Metro Runs (Per-Metro, Not External Catalog)
 
 Important:

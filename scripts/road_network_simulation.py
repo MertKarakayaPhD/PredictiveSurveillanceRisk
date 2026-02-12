@@ -40,6 +40,11 @@ import osmnx as ox
 from scipy.spatial import cKDTree
 from tqdm import tqdm
 
+try:
+    import torch
+except Exception:  # pragma: no cover - optional dependency
+    torch = None
+
 
 # =============================================================================
 # MULTIPROCESSING GLOBALS (initialized per worker)
@@ -48,13 +53,236 @@ from tqdm import tqdm
 _worker_data = {}
 
 
+def resolve_compute_backend(requested_backend: str, n_workers: int) -> str:
+    """
+    Resolve requested compute backend to an executable backend.
+
+    Allowed values:
+    - cpu
+    - torch-cpu
+    - torch-cuda
+    - auto
+    """
+    mode = (requested_backend or "cpu").strip().lower()
+    if mode not in {"cpu", "torch-cpu", "torch-cuda", "auto"}:
+        raise ValueError(f"Unsupported compute backend: {requested_backend}")
+
+    torch_available = torch is not None
+
+    if mode == "auto":
+        if torch_available and torch.cuda.is_available() and n_workers == 1:
+            return "torch-cuda"
+        return "cpu"
+
+    if mode == "torch-cpu":
+        if not torch_available:
+            print("[WARN] torch-cpu requested but torch is not installed. Falling back to cpu.")
+            return "cpu"
+        return "torch-cpu"
+
+    if mode == "torch-cuda":
+        if not torch_available:
+            print("[WARN] torch-cuda requested but torch is not installed. Falling back to cpu.")
+            return "cpu"
+        if not torch.cuda.is_available():
+            print("[WARN] torch-cuda requested but CUDA is unavailable. Falling back to cpu.")
+            return "cpu"
+        if n_workers > 1:
+            print(
+                "[WARN] torch-cuda requested with n_workers > 1. "
+                "Using cpu backend to avoid multi-process CUDA instability."
+            )
+            return "cpu"
+        return "torch-cuda"
+
+    return "cpu"
+
+
+def build_destination_payload(
+    A_dest: dict[int, float],
+    node_coords: dict[int, tuple[float, float]],
+    compute_backend: str,
+) -> dict:
+    """
+    Build cached arrays/tensors for fast destination sampling.
+    """
+    nodes: list[int] = []
+    lats: list[float] = []
+    lons: list[float] = []
+    attrs: list[float] = []
+    for node, weight in A_dest.items():
+        coord = node_coords.get(node)
+        if coord is None:
+            continue
+        nodes.append(int(node))
+        lats.append(float(coord[0]))
+        lons.append(float(coord[1]))
+        attrs.append(max(float(weight), 1e-12))
+
+    if not nodes:
+        return {
+            "nodes_np": np.array([], dtype=np.int64),
+            "lats_np": np.array([], dtype=np.float64),
+            "lons_np": np.array([], dtype=np.float64),
+            "attrs_np": np.array([], dtype=np.float64),
+            "compute_backend": "cpu",
+        }
+
+    payload = {
+        "nodes_np": np.asarray(nodes, dtype=np.int64),
+        "lats_np": np.asarray(lats, dtype=np.float64),
+        "lons_np": np.asarray(lons, dtype=np.float64),
+        "attrs_np": np.asarray(attrs, dtype=np.float64),
+        "compute_backend": compute_backend,
+    }
+
+    if compute_backend in {"torch-cpu", "torch-cuda"} and torch is not None:
+        device = "cuda" if compute_backend == "torch-cuda" else "cpu"
+        payload["nodes_t"] = torch.as_tensor(payload["nodes_np"], device=device, dtype=torch.int64)
+        payload["lats_t"] = torch.as_tensor(payload["lats_np"], device=device, dtype=torch.float32)
+        payload["lons_t"] = torch.as_tensor(payload["lons_np"], device=device, dtype=torch.float32)
+        payload["attrs_t"] = torch.as_tensor(payload["attrs_np"], device=device, dtype=torch.float32)
+
+    return payload
+
+
+def build_destination_payload_map(
+    A_work: dict[int, float],
+    A_home: dict[int, float],
+    A_other: dict[int, float],
+    node_coords: dict[int, tuple[float, float]],
+    compute_backend: str,
+) -> dict[str, dict]:
+    work = build_destination_payload(A_work, node_coords=node_coords, compute_backend=compute_backend)
+    home = build_destination_payload(A_home, node_coords=node_coords, compute_backend=compute_backend)
+    other = build_destination_payload(A_other, node_coords=node_coords, compute_backend=compute_backend)
+    return {
+        "work": work,
+        "home": home,
+        "shop": other,
+        "social": other,
+        "other": other,
+    }
+
+
+def choose_destination_fast(
+    current_node: int,
+    activity_type: str,
+    home_node: int,
+    activity_set: set[int],
+    dest_payload: dict,
+    node_coords: dict[int, tuple[float, float]],
+    p_return: float = 0.6,
+    distance_decay_beta: float = 0.001,
+    min_distance_m: float = 8047.0,
+    max_distance_m: float = 16093.0,
+    rng: np.random.Generator | None = None,
+) -> int:
+    """
+    Vectorized destination choice with optional torch backend.
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+
+    if activity_type == "home":
+        return home_node
+
+    nodes_np = dest_payload.get("nodes_np")
+    lats_np = dest_payload.get("lats_np")
+    lons_np = dest_payload.get("lons_np")
+    attrs_np = dest_payload.get("attrs_np")
+    if nodes_np is None or len(nodes_np) == 0:
+        return current_node
+
+    if rng.random() < p_return and len(activity_set) > 0:
+        known = list(activity_set)
+        if known:
+            return int(known[int(rng.integers(0, len(known)))])
+
+    current_coord = node_coords.get(current_node)
+    if current_coord is None:
+        probs = attrs_np / max(float(attrs_np.sum()), 1e-12)
+        return int(rng.choice(nodes_np, p=probs))
+
+    current_lat, current_lon = float(current_coord[0]), float(current_coord[1])
+    compute_backend = dest_payload.get("compute_backend", "cpu")
+
+    if compute_backend == "torch-cuda" and torch is not None:
+        nodes_t = dest_payload["nodes_t"]
+        lats_t = dest_payload["lats_t"]
+        lons_t = dest_payload["lons_t"]
+        attrs_t = dest_payload["attrs_t"]
+
+        current_lat_t = torch.tensor(current_lat, device=lats_t.device, dtype=torch.float32)
+        current_lon_t = torch.tensor(current_lon, device=lons_t.device, dtype=torch.float32)
+        cos_lat = torch.cos(torch.deg2rad(current_lat_t))
+        dlat = (lats_t - current_lat_t) * 111000.0
+        dlon = (lons_t - current_lon_t) * 111000.0 * cos_lat
+        dist = torch.sqrt(dlat * dlat + dlon * dlon)
+        weights = attrs_t * torch.exp(-distance_decay_beta * dist)
+
+        valid_mask = nodes_t != int(current_node)
+        range_mask = (dist >= min_distance_m) & (dist <= max_distance_m)
+        final_mask = valid_mask & range_mask
+        if int(final_mask.sum().item()) == 0:
+            final_mask = valid_mask & (dist >= min_distance_m)
+        if int(final_mask.sum().item()) == 0:
+            final_mask = valid_mask
+        if int(final_mask.sum().item()) == 0:
+            return int(current_node)
+
+        filtered_nodes = nodes_t[final_mask]
+        filtered_weights = weights[final_mask]
+        total = float(filtered_weights.sum().item())
+        if total <= 0:
+            idx = int(torch.randint(0, filtered_nodes.shape[0], (1,), device=filtered_nodes.device).item())
+        else:
+            probs_t = filtered_weights / filtered_weights.sum()
+            idx = int(torch.multinomial(probs_t, num_samples=1).item())
+        return int(filtered_nodes[idx].item())
+
+    # CPU / numpy path
+    cos_lat = np.cos(np.radians(current_lat))
+    dlat = (lats_np - current_lat) * 111000.0
+    dlon = (lons_np - current_lon) * 111000.0 * cos_lat
+    dist = np.sqrt(dlat * dlat + dlon * dlon)
+    weights = attrs_np * np.exp(-distance_decay_beta * dist)
+
+    valid_mask = nodes_np != int(current_node)
+    range_mask = (dist >= min_distance_m) & (dist <= max_distance_m)
+    final_mask = valid_mask & range_mask
+    if not np.any(final_mask):
+        final_mask = valid_mask & (dist >= min_distance_m)
+    if not np.any(final_mask):
+        final_mask = valid_mask
+    if not np.any(final_mask):
+        return int(current_node)
+
+    filtered_nodes = nodes_np[final_mask]
+    filtered_weights = weights[final_mask]
+    total = float(filtered_weights.sum())
+    if total <= 0:
+        idx = int(rng.integers(0, len(filtered_nodes)))
+        return int(filtered_nodes[idx])
+    else:
+        probs = filtered_weights / total
+        return int(rng.choice(filtered_nodes, p=probs))
+
+
 def _init_worker(G_simple_data, G_road_data, node_coords, camera_positions,
                  camera_tree_data, camera_ids, A_work, A_home, A_other,
                  edge_traffic_weights, k_shortest, p_return, detection_radius_m,
                  lambda_traffic, min_trip_distance_m, max_trip_distance_m,
-                 n_trips_per_vehicle, base_seed):
+                 n_trips_per_vehicle, base_seed, compute_backend):
     """Initialize worker process with shared data."""
     global _worker_data
+    dest_payload_by_type = build_destination_payload_map(
+        A_work=A_work,
+        A_home=A_home,
+        A_other=A_other,
+        node_coords=node_coords,
+        compute_backend=compute_backend,
+    )
     _worker_data = {
         'G_simple': G_simple_data,
         'G_road': G_road_data,
@@ -62,9 +290,7 @@ def _init_worker(G_simple_data, G_road_data, node_coords, camera_positions,
         'camera_positions': camera_positions,
         'camera_tree': camera_tree_data,
         'camera_ids': camera_ids,
-        'A_work': A_work,
-        'A_home': A_home,
-        'A_other': A_other,
+        'dest_payload_by_type': dest_payload_by_type,
         'edge_traffic_weights': edge_traffic_weights,
         'k_shortest': k_shortest,
         'p_return': p_return,
@@ -74,6 +300,7 @@ def _init_worker(G_simple_data, G_road_data, node_coords, camera_positions,
         'max_trip_distance_m': max_trip_distance_m,
         'n_trips_per_vehicle': n_trips_per_vehicle,
         'base_seed': base_seed,
+        'compute_backend': compute_backend,
     }
 
 
@@ -96,9 +323,7 @@ def _simulate_single_vehicle(args):
     camera_positions = _worker_data['camera_positions']
     camera_tree = _worker_data['camera_tree']
     camera_ids = _worker_data['camera_ids']
-    A_work = _worker_data['A_work']
-    A_home = _worker_data['A_home']
-    A_other = _worker_data['A_other']
+    dest_payload_by_type = _worker_data['dest_payload_by_type']
     edge_traffic_weights = _worker_data['edge_traffic_weights']
     k_shortest = _worker_data['k_shortest']
     p_return = _worker_data['p_return']
@@ -111,14 +336,6 @@ def _simulate_single_vehicle(args):
 
     # Create deterministic RNG for this vehicle
     rng = np.random.default_rng(base_seed + vehicle_idx)
-
-    A_by_type = {
-        'work': A_work,
-        'shop': A_other,
-        'social': A_other,
-        'other': A_other,
-        'home': A_home,
-    }
 
     activity_set = set()
     vehicle_camera_hits = []
@@ -135,15 +352,13 @@ def _simulate_single_vehicle(args):
 
         for activity in tour:
             # Choose destination
-            A_dest = A_by_type.get(activity, A_other)
-
-            destination = choose_destination(
+            dest_payload = dest_payload_by_type.get(activity, dest_payload_by_type['other'])
+            destination = choose_destination_fast(
                 current_node=current_node,
                 activity_type=activity,
                 home_node=home_node,
                 activity_set=activity_set,
-                A_dest=A_dest,
-                G_road=G_road,
+                dest_payload=dest_payload,
                 node_coords=node_coords,
                 p_return=p_return,
                 min_distance_m=min_trip_distance_m,
@@ -915,6 +1130,7 @@ def simulate_road_network_trips(
     # Parallel processing
     n_workers: int = 1,  # Set > 1 to enable multiprocessing
     mp_chunksize: int = 1,
+    compute_backend: str = "cpu",
     traffic_blend_factor: float = 0.7,
     lambda_traffic: float = 0.5,
     # Trip distance constraints
@@ -950,6 +1166,7 @@ def simulate_road_network_trips(
         edge_traffic_weights: Edge-level traffic weights for route choice
         traffic_blend_factor: How much to weight traffic vs degree (0-1)
         lambda_traffic: Weight for traffic preference in route utility
+        compute_backend: cpu | torch-cpu | torch-cuda | auto
         min_trip_distance_m: Minimum trip distance (default 5 miles)
         max_trip_distance_m: Maximum trip distance (default 10 miles)
 
@@ -960,11 +1177,13 @@ def simulate_road_network_trips(
         - network_stats: Road network size, camera coverage, P(observation)
     """
     rng = np.random.default_rng(seed)
+    active_backend = resolve_compute_backend(compute_backend, n_workers=n_workers)
 
     if verbose:
         print(f"\n{'='*60}")
         print(f"ROAD NETWORK SIMULATION: {region.upper()}")
         print(f"{'='*60}")
+        print(f"Compute backend: requested={compute_backend} active={active_backend}")
 
     # Load cameras
     camera_positions, camera_tree, camera_ids = load_cameras(camera_geojson_path)
@@ -1035,14 +1254,14 @@ def simulate_road_network_trips(
         print("Assigning vehicle homes...")
     vehicle_homes = assign_vehicle_homes(n_vehicles, A_home, seed=seed)
 
-    # Prepare attractiveness lookup by activity type
-    A_by_type = {
-        'work': A_work,
-        'shop': A_other,
-        'social': A_other,
-        'other': A_other,
-        'home': A_home,
-    }
+    # Prepare destination payloads for fast destination choice.
+    dest_payload_by_type = build_destination_payload_map(
+        A_work=A_work,
+        A_home=A_home,
+        A_other=A_other,
+        node_coords=node_coords,
+        compute_backend=active_backend,
+    )
 
     # Simulate trips
     if verbose:
@@ -1077,7 +1296,7 @@ def simulate_road_network_trips(
             camera_tree, camera_ids, A_work, A_home, A_other,
             edge_traffic_weights, k_shortest, p_return, detection_radius_m,
             lambda_traffic, min_trip_distance_m, max_trip_distance_m,
-            n_trips_per_vehicle, seed
+            n_trips_per_vehicle, seed, active_backend
         )
 
         trajectories_by_idx = [None] * len(worker_args)
@@ -1135,15 +1354,13 @@ def simulate_road_network_trips(
 
                 for activity in tour:
                     # Choose destination
-                    A_dest = A_by_type.get(activity, A_other)
-
-                    destination = choose_destination(
+                    dest_payload = dest_payload_by_type.get(activity, dest_payload_by_type['other'])
+                    destination = choose_destination_fast(
                         current_node=current_node,
                         activity_type=activity,
                         home_node=home_node,
                         activity_set=activity_set,
-                        A_dest=A_dest,
-                        G_road=G_road,
+                        dest_payload=dest_payload,
                         node_coords=node_coords,
                         p_return=p_return,
                         min_distance_m=min_trip_distance_m,
@@ -1242,6 +1459,8 @@ def simulate_road_network_trips(
             'h3_resolution': h3_resolution,
             'seed': seed,
             'mp_chunksize': mp_chunksize,
+            'compute_backend_requested': compute_backend,
+            'compute_backend': active_backend,
         },
     }
 

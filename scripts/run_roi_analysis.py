@@ -703,6 +703,12 @@ def main() -> int:
     parser.add_argument("--n-trips", type=int, default=10)
     parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--mp-chunksize", type=int, default=2, help="Multiprocessing chunksize for per-vehicle tasks.")
+    parser.add_argument(
+        "--compute-backend",
+        type=str,
+        default="cpu",
+        help="Compute backend for destination choice: cpu | torch-cpu | torch-cuda | auto",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--k-shortest", type=int, default=3)
     parser.add_argument("--p-return", type=float, default=0.6)
@@ -923,6 +929,7 @@ def main() -> int:
         seed=args.seed,
         n_workers=args.workers,
         mp_chunksize=args.mp_chunksize,
+        compute_backend=args.compute_backend,
         verbose=True,
         traffic_weights=node_traffic,
         edge_traffic_weights=edge_traffic,
@@ -1021,6 +1028,7 @@ def main() -> int:
             "n_trips": args.n_trips,
             "workers": args.workers,
             "mp_chunksize": args.mp_chunksize,
+            "compute_backend": simulation_result.get("parameters", {}).get("compute_backend", args.compute_backend),
             "seed": args.seed,
             "k_shortest": args.k_shortest,
             "p_return": args.p_return,
