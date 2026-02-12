@@ -184,6 +184,11 @@ def main() -> int:
 
     parser.add_argument("--skip-preflight", action="store_true")
     parser.add_argument("--require-fresh-data", action="store_true")
+    parser.add_argument(
+        "--run-legacy-aadt-validate",
+        action="store_true",
+        help="Also run legacy data/raw/aadt validator during preflight.",
+    )
     parser.add_argument("--run-tests", action="store_true")
     parser.add_argument("--blas-threads", type=int, default=1)
     args = parser.parse_args()
@@ -262,6 +267,7 @@ def main() -> int:
             "max_radius_km": args.max_radius_km,
             "force_rerun": args.force_rerun,
             "require_aadt": args.require_aadt,
+            "run_legacy_aadt_validate": args.run_legacy_aadt_validate,
             "blas_threads": args.blas_threads,
         },
         "selected_states": selected_states,
@@ -300,10 +306,16 @@ def main() -> int:
         fresh_cmd = [
             args.python_exe,
             "scripts/check_data_freshness.py",
+            "--config",
+            str(config_path),
             "--strict-missing",
             "--output-json",
             str(freshness_json),
         ]
+        if args.metro_ids.strip():
+            fresh_cmd.extend(["--metro-ids", args.metro_ids])
+        if catalog_path:
+            fresh_cmd.extend(["--camera-catalog-csv", str(catalog_path)])
         if args.require_fresh_data:
             fresh_cmd.append("--require-fresh")
         rc = run_step(fresh_cmd, preflight_log, BASE_DIR)
@@ -313,16 +325,17 @@ def main() -> int:
             save_state(state_path, state)
             return rc
 
-        rc = run_step(
-            [args.python_exe, "scripts/download_aadt_data.py", "--validate"],
-            preflight_log,
-            BASE_DIR,
-        )
-        if rc != 0:
-            state["status"] = "failed_preflight"
-            state["ended_at_utc"] = utc_now_iso()
-            save_state(state_path, state)
-            return rc
+        if args.run_legacy_aadt_validate:
+            rc = run_step(
+                [args.python_exe, "scripts/download_aadt_data.py", "--validate"],
+                preflight_log,
+                BASE_DIR,
+            )
+            if rc != 0:
+                state["status"] = "failed_preflight"
+                state["ended_at_utc"] = utc_now_iso()
+                save_state(state_path, state)
+                return rc
 
         if args.run_tests:
             rc = run_step([args.python_exe, "-m", "pytest", "-q"], preflight_log, BASE_DIR)

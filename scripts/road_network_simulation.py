@@ -85,7 +85,7 @@ def _simulate_single_vehicle(args):
         args: Tuple of (vehicle_id, home_node, vehicle_index)
 
     Returns:
-        Tuple of (trajectory_dict, list of trip_metadata dicts)
+        Tuple of (vehicle_index, trajectory_dict, list of trip_metadata dicts)
     """
     vid, home_node, vehicle_idx = args
 
@@ -194,7 +194,7 @@ def _simulate_single_vehicle(args):
         'home_node': home_node,
     }
 
-    return trajectory, trip_metadata_list
+    return vehicle_idx, trajectory, trip_metadata_list
 
 
 # =============================================================================
@@ -1079,17 +1079,27 @@ def simulate_road_network_trips(
             n_trips_per_vehicle, seed
         )
 
+        trajectories_by_idx = [None] * len(worker_args)
+        trip_metadata_by_idx = [None] * len(worker_args)
+
         with Pool(processes=n_workers, initializer=_init_worker, initargs=init_args) as pool:
-            # Use imap for progress tracking
-            results = list(tqdm(
-                pool.imap(_simulate_single_vehicle, worker_args),
+            # Use unordered completion for smoother progress updates.
+            for vehicle_idx, trajectory, trip_meta_list in tqdm(
+                pool.imap_unordered(_simulate_single_vehicle, worker_args, chunksize=1),
                 total=len(worker_args),
                 disable=not verbose,
-                desc="Simulating vehicles (parallel)"
-            ))
+                desc="Simulating vehicles (parallel)",
+            ):
+                trajectories_by_idx[vehicle_idx] = trajectory
+                trip_metadata_by_idx[vehicle_idx] = trip_meta_list
 
-        # Aggregate results
-        for trajectory, trip_meta_list in results:
+        # Aggregate results in original vehicle index order (deterministic output ordering).
+        for vehicle_idx in range(len(worker_args)):
+            trajectory = trajectories_by_idx[vehicle_idx]
+            trip_meta_list = trip_metadata_by_idx[vehicle_idx] or []
+            if trajectory is None:
+                continue
+
             all_trajectories.append(trajectory)
             trip_metadata.extend(trip_meta_list)
 
