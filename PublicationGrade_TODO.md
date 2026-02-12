@@ -244,7 +244,7 @@ Important:
 - Current simulation path is CPU/network-graph dominated; GPU offload is not the primary bottleneck.
 - Keep `--blas-threads 1` when using many workers.
 
-Run queue (Chicago excluded by default):
+Run queue (includes Chicago by default):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/run_us32_unattended.ps1 `
@@ -265,7 +265,7 @@ powershell -ExecutionPolicy Bypass -File scripts/run_us32_unattended.ps1 `
 Notes:
 - The queue is safe to rerun; per-metro runs use `run_metro_batch.py`, which skips completed outputs.
 - Run logs/state are written under `logs/us32_unattended/<RUN_ID>/`.
-- Include Chicago by adding `-IncludeChicago`.
+- Exclude Chicago only if needed by adding `-ExcludeMetroIds chicago_il`.
 
 ## 6) Manuscript-Eligible New Metro Runs (Per-Metro, Not External Catalog)
 

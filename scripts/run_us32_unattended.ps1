@@ -2,7 +2,7 @@ param(
     [string]$Config = "data/external/metro_batch/metros_us_32.json",
     [string]$CameraCatalogCsv = "data/external/camera_catalog/cameras_us_active.csv.gz",
     [string[]]$MetroIds = @(),
-    [string[]]$ExcludeMetroIds = @("chicago_il"),
+    [string[]]$ExcludeMetroIds = @(),
     [switch]$IncludeChicago,
     [int]$Workers = 14,
     [int]$MinWorkers = 8,
