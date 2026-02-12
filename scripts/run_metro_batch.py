@@ -121,6 +121,18 @@ def matches_signature(summary_path: Path, expected: dict[str, Any]) -> bool:
         == int(expected.get("camera_query_cuda_batch_size", 256)),
         int(run_params.get("camera_query_cuda_min_work", 2000000))
         == int(expected.get("camera_query_cuda_min_work", 2000000)),
+        int(run_params.get("destination_candidate_pool_size", 512))
+        == int(expected.get("destination_candidate_pool_size", 512)),
+        int(run_params.get("path_cache_size", 10000))
+        == int(expected.get("path_cache_size", 10000)),
+        int(run_params.get("route_cache_size", 20000))
+        == int(expected.get("route_cache_size", 20000)),
+        int(run_params.get("checkpoint_interval_vehicles", 250))
+        == int(expected.get("checkpoint_interval_vehicles", 250)),
+        bool(run_params.get("resume_checkpoint", True))
+        == bool(expected.get("resume_checkpoint", True)),
+        bool(run_params.get("store_trip_metadata", True))
+        == bool(expected.get("store_trip_metadata", True)),
         int(run_params.get("k_shortest", -1)) == int(expected["k_shortest"]),
         abs(float(run_params.get("p_return", -1.0)) - float(expected["p_return"])) < 1e-12,
         abs(float(run_params.get("detection_radius_m", -1.0)) - float(expected["detection_radius_m"])) < 1e-9,
@@ -186,6 +198,26 @@ def main() -> int:
     parser.add_argument("--camera-query-backend", type=str, default="scipy-kdtree")
     parser.add_argument("--camera-query-cuda-batch-size", type=int, default=256)
     parser.add_argument("--camera-query-cuda-min-work", type=int, default=2000000)
+    parser.add_argument("--destination-candidate-pool-size", type=int, default=512)
+    parser.add_argument("--path-cache-size", type=int, default=10000)
+    parser.add_argument("--route-cache-size", type=int, default=20000)
+    parser.add_argument("--checkpoint-interval-vehicles", type=int, default=250)
+    parser.add_argument(
+        "--resume-checkpoint",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    parser.add_argument(
+        "--store-trip-metadata",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+    )
+    parser.add_argument(
+        "--stable-output-subdir",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Reuse a per-metro output subdir so retries resume from checkpoints.",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--k-shortest", type=int, default=3)
     parser.add_argument("--p-return", type=float, default=0.6)
@@ -218,6 +250,14 @@ def main() -> int:
         raise ValueError("--camera-query-cuda-batch-size must be >= 1")
     if args.camera_query_cuda_min_work <= 0:
         raise ValueError("--camera-query-cuda-min-work must be >= 1")
+    if args.destination_candidate_pool_size < 0:
+        raise ValueError("--destination-candidate-pool-size must be >= 0")
+    if args.path_cache_size < 0:
+        raise ValueError("--path-cache-size must be >= 0")
+    if args.route_cache_size < 0:
+        raise ValueError("--route-cache-size must be >= 0")
+    if args.checkpoint_interval_vehicles <= 0:
+        raise ValueError("--checkpoint-interval-vehicles must be >= 1")
 
     for env_var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
         os.environ[env_var] = str(args.blas_threads)
@@ -283,6 +323,13 @@ def main() -> int:
             "camera_query_backend": args.camera_query_backend,
             "camera_query_cuda_batch_size": args.camera_query_cuda_batch_size,
             "camera_query_cuda_min_work": args.camera_query_cuda_min_work,
+            "destination_candidate_pool_size": args.destination_candidate_pool_size,
+            "path_cache_size": args.path_cache_size,
+            "route_cache_size": args.route_cache_size,
+            "checkpoint_interval_vehicles": args.checkpoint_interval_vehicles,
+            "resume_checkpoint": args.resume_checkpoint,
+            "store_trip_metadata": args.store_trip_metadata,
+            "stable_output_subdir": args.stable_output_subdir,
             "seed": args.seed,
             "k_shortest": args.k_shortest,
             "p_return": args.p_return,
@@ -460,6 +507,12 @@ def main() -> int:
             "camera_query_backend": args.camera_query_backend,
             "camera_query_cuda_batch_size": args.camera_query_cuda_batch_size,
             "camera_query_cuda_min_work": args.camera_query_cuda_min_work,
+            "destination_candidate_pool_size": args.destination_candidate_pool_size,
+            "path_cache_size": args.path_cache_size,
+            "route_cache_size": args.route_cache_size,
+            "checkpoint_interval_vehicles": args.checkpoint_interval_vehicles,
+            "resume_checkpoint": args.resume_checkpoint,
+            "store_trip_metadata": args.store_trip_metadata,
             "k_shortest": args.k_shortest,
             "p_return": args.p_return,
             "detection_radius_m": args.detection_radius_m,
@@ -514,6 +567,14 @@ def main() -> int:
             str(args.camera_query_cuda_batch_size),
             "--camera-query-cuda-min-work",
             str(args.camera_query_cuda_min_work),
+            "--destination-candidate-pool-size",
+            str(args.destination_candidate_pool_size),
+            "--path-cache-size",
+            str(args.path_cache_size),
+            "--route-cache-size",
+            str(args.route_cache_size),
+            "--checkpoint-interval-vehicles",
+            str(args.checkpoint_interval_vehicles),
             "--seed",
             str(args.seed),
             "--k-shortest",
@@ -533,6 +594,16 @@ def main() -> int:
             cmd.extend(["--boundary-geojson", str(boundary_path)])
         if args.require_aadt:
             cmd.append("--require-aadt")
+        if args.resume_checkpoint:
+            cmd.append("--resume-checkpoint")
+        else:
+            cmd.append("--no-resume-checkpoint")
+        if args.store_trip_metadata:
+            cmd.append("--store-trip-metadata")
+        else:
+            cmd.append("--no-store-trip-metadata")
+        if args.stable_output_subdir:
+            cmd.extend(["--output-subdir", f"{metro_id}_active"])
         if aadt_path is not None:
             cmd.extend(["--aadt-path", str(aadt_path)])
         elif aadt_paths:

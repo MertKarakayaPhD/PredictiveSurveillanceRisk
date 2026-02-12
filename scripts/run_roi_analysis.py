@@ -721,6 +721,42 @@ def main() -> int:
         default=2000000,
         help="Minimum route_nodes*cameras workload to activate CUDA query path.",
     )
+    parser.add_argument(
+        "--destination-candidate-pool-size",
+        type=int,
+        default=512,
+        help="Exploration candidate pool size for destination choice (0 disables sampling).",
+    )
+    parser.add_argument(
+        "--path-cache-size",
+        type=int,
+        default=10000,
+        help="Max OD path-cache entries per process.",
+    )
+    parser.add_argument(
+        "--route-cache-size",
+        type=int,
+        default=20000,
+        help="Max route->camera-hit cache entries per process.",
+    )
+    parser.add_argument(
+        "--checkpoint-interval-vehicles",
+        type=int,
+        default=250,
+        help="Flush simulation checkpoint every N completed vehicles.",
+    )
+    parser.add_argument(
+        "--resume-checkpoint",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Resume simulation from checkpoint shards if present.",
+    )
+    parser.add_argument(
+        "--store-trip-metadata",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Keep full per-trip metadata in output (disable to reduce memory/disk).",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--k-shortest", type=int, default=3)
     parser.add_argument("--p-return", type=float, default=0.6)
@@ -733,6 +769,12 @@ def main() -> int:
     )
 
     parser.add_argument("--output-root", type=str, default="results/custom_roi")
+    parser.add_argument(
+        "--output-subdir",
+        type=str,
+        default="",
+        help="Optional fixed subdirectory under output-root (enables robust resume across retries).",
+    )
     args = parser.parse_args()
 
     use_boundary = bool(args.boundary_geojson)
@@ -757,17 +799,38 @@ def main() -> int:
         raise ValueError("--camera-query-cuda-batch-size must be >= 1")
     if args.camera_query_cuda_min_work <= 0:
         raise ValueError("--camera-query-cuda-min-work must be >= 1")
+    if args.destination_candidate_pool_size < 0:
+        raise ValueError("--destination-candidate-pool-size must be >= 0")
+    if args.path_cache_size < 0:
+        raise ValueError("--path-cache-size must be >= 0")
+    if args.route_cache_size < 0:
+        raise ValueError("--route-cache-size must be >= 0")
+    if args.checkpoint_interval_vehicles <= 0:
+        raise ValueError("--checkpoint-interval-vehicles must be >= 1")
 
     roi_name = slugify(args.name)
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    out_dir = (BASE_DIR / args.output_root / f"{roi_name}_{run_id}").resolve()
+    if args.output_subdir.strip():
+        out_dir = (BASE_DIR / args.output_root / args.output_subdir.strip()).resolve()
+    else:
+        out_dir = (BASE_DIR / args.output_root / f"{roi_name}_{run_id}").resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    if args.output_subdir.strip() and (not args.resume_checkpoint):
+        if any(out_dir.iterdir()):
+            raise ValueError(
+                "--output-subdir points to an existing non-empty directory; "
+                "use --resume-checkpoint or choose a different --output-subdir."
+            )
+    if args.output_subdir.strip() and args.resume_checkpoint:
+        print(f"[INFO] Resume-enabled output directory: {out_dir}")
 
     clipped_camera_path = out_dir / "cameras_clipped.geojson"
     summary_path = out_dir / "summary.json"
     result_pkl_path = out_dir / "road_trajectories.pkl"
     psr_path = out_dir / "psr.json"
     ring_metrics_path = out_dir / "ring_metrics.json"
+    checkpoint_dir = out_dir / "checkpoint"
 
     print(f"[INFO] Output directory: {out_dir}")
     print("[INFO] Clipping cameras to ROI...")
@@ -948,6 +1011,13 @@ def main() -> int:
         camera_query_backend=args.camera_query_backend,
         camera_query_cuda_batch_size=args.camera_query_cuda_batch_size,
         camera_query_cuda_min_work=args.camera_query_cuda_min_work,
+        destination_candidate_pool_size=args.destination_candidate_pool_size,
+        path_cache_size=args.path_cache_size,
+        route_cache_size=args.route_cache_size,
+        checkpoint_dir=checkpoint_dir,
+        checkpoint_interval_vehicles=args.checkpoint_interval_vehicles,
+        resume_from_checkpoint=args.resume_checkpoint,
+        store_trip_metadata=args.store_trip_metadata,
         verbose=True,
         traffic_weights=node_traffic,
         edge_traffic_weights=edge_traffic,
@@ -1055,12 +1125,28 @@ def main() -> int:
             "camera_query_cuda_min_work": simulation_result.get("parameters", {}).get(
                 "camera_query_cuda_min_work", args.camera_query_cuda_min_work
             ),
+            "destination_candidate_pool_size": simulation_result.get("parameters", {}).get(
+                "destination_candidate_pool_size", args.destination_candidate_pool_size
+            ),
+            "path_cache_size": simulation_result.get("parameters", {}).get(
+                "path_cache_size", args.path_cache_size
+            ),
+            "route_cache_size": simulation_result.get("parameters", {}).get(
+                "route_cache_size", args.route_cache_size
+            ),
+            "checkpoint_interval_vehicles": simulation_result.get("parameters", {}).get(
+                "checkpoint_interval_vehicles", args.checkpoint_interval_vehicles
+            ),
+            "resume_checkpoint": bool(args.resume_checkpoint),
+            "store_trip_metadata": bool(args.store_trip_metadata),
             "seed": args.seed,
             "k_shortest": args.k_shortest,
             "p_return": args.p_return,
             "detection_radius_m": args.detection_radius_m,
             "ring_breaks_km": ring_breaks_km,
             "boundary_margin_deg": args.boundary_margin_deg,
+            "output_subdir": args.output_subdir or None,
+            "checkpoint_dir": str(checkpoint_dir),
         },
     }
 

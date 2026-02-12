@@ -14,6 +14,13 @@ param(
     [string]$CameraQueryBackend = "scipy-kdtree",
     [int]$CameraQueryCudaBatchSize = 256,
     [int]$CameraQueryCudaMinWork = 2000000,
+    [int]$DestinationCandidatePoolSize = 512,
+    [int]$PathCacheSize = 10000,
+    [int]$RouteCacheSize = 20000,
+    [int]$CheckpointIntervalVehicles = 250,
+    [bool]$ResumeCheckpoint = $true,
+    [bool]$StoreTripMetadata = $true,
+    [bool]$StableOutputSubdir = $true,
     [string]$PythonExe = "python",
     [string]$LogsRoot = "logs/us32_unattended",
     [int]$KeepLastRuns = 12,
@@ -45,6 +52,10 @@ if ($CameraQueryBackend -notin @("scipy-kdtree", "torch-cuda", "auto")) {
 }
 if ($CameraQueryCudaBatchSize -le 0) { throw "CameraQueryCudaBatchSize must be >= 1" }
 if ($CameraQueryCudaMinWork -le 0) { throw "CameraQueryCudaMinWork must be >= 1" }
+if ($DestinationCandidatePoolSize -lt 0) { throw "DestinationCandidatePoolSize must be >= 0" }
+if ($PathCacheSize -lt 0) { throw "PathCacheSize must be >= 0" }
+if ($RouteCacheSize -lt 0) { throw "RouteCacheSize must be >= 0" }
+if ($CheckpointIntervalVehicles -le 0) { throw "CheckpointIntervalVehicles must be >= 1" }
 
 $RunId = Get-Date -Format "yyyyMMdd_HHmmss"
 $LogsRootAbs = Join-Path $RepoRoot $LogsRoot
@@ -185,6 +196,13 @@ $state = @{
         camera_query_backend = $CameraQueryBackend
         camera_query_cuda_batch_size = $CameraQueryCudaBatchSize
         camera_query_cuda_min_work = $CameraQueryCudaMinWork
+        destination_candidate_pool_size = $DestinationCandidatePoolSize
+        path_cache_size = $PathCacheSize
+        route_cache_size = $RouteCacheSize
+        checkpoint_interval_vehicles = $CheckpointIntervalVehicles
+        resume_checkpoint = [bool]$ResumeCheckpoint
+        store_trip_metadata = [bool]$StoreTripMetadata
+        stable_output_subdir = [bool]$StableOutputSubdir
         skip_preflight = [bool]$SkipPreflight
         require_fresh_data = [bool]$RequireFreshData
         include_chicago = [bool]$IncludeChicago
@@ -213,7 +231,12 @@ Write-Log (
     "BLAS threads=$BlasThreads, mp_chunksize=$MpChunksize, " +
     "camera_query_backend=$CameraQueryBackend, " +
     "camera_query_cuda_batch_size=$CameraQueryCudaBatchSize, " +
-    "camera_query_cuda_min_work=$CameraQueryCudaMinWork"
+    "camera_query_cuda_min_work=$CameraQueryCudaMinWork, " +
+    "destination_candidate_pool_size=$DestinationCandidatePoolSize, " +
+    "path_cache_size=$PathCacheSize, route_cache_size=$RouteCacheSize, " +
+    "checkpoint_interval_vehicles=$CheckpointIntervalVehicles, " +
+    "resume_checkpoint=$ResumeCheckpoint, store_trip_metadata=$StoreTripMetadata, " +
+    "stable_output_subdir=$StableOutputSubdir"
 )
 
 $env:OMP_NUM_THREADS = "$BlasThreads"
@@ -276,10 +299,17 @@ foreach ($metro in $queue) {
             "--camera-query-backend", "$CameraQueryBackend",
             "--camera-query-cuda-batch-size", "$CameraQueryCudaBatchSize",
             "--camera-query-cuda-min-work", "$CameraQueryCudaMinWork",
+            "--destination-candidate-pool-size", "$DestinationCandidatePoolSize",
+            "--path-cache-size", "$PathCacheSize",
+            "--route-cache-size", "$RouteCacheSize",
+            "--checkpoint-interval-vehicles", "$CheckpointIntervalVehicles",
             "--blas-threads", "$BlasThreads",
             "--keep-last-runs", "$KeepLastRuns",
             "--skip-preflight"
         )
+        if ($ResumeCheckpoint) { $cmd += "--resume-checkpoint" } else { $cmd += "--no-resume-checkpoint" }
+        if ($StoreTripMetadata) { $cmd += "--store-trip-metadata" } else { $cmd += "--no-store-trip-metadata" }
+        if ($StableOutputSubdir) { $cmd += "--stable-output-subdir" } else { $cmd += "--no-stable-output-subdir" }
         if ($DryRun) { $cmd += "--dry-run" }
 
         $rc = 0

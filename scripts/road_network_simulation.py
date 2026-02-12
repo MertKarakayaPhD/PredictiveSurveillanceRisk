@@ -25,7 +25,9 @@ Date: January 2026
 import argparse
 import json
 import pickle
-from collections import defaultdict
+import hashlib
+import time
+from collections import OrderedDict, defaultdict
 from dataclasses import dataclass, field
 from functools import partial
 from multiprocessing import Pool, cpu_count
@@ -51,6 +53,192 @@ except Exception:  # pragma: no cover - optional
 # =============================================================================
 
 _worker_data = {}
+
+CHECKPOINT_VERSION = 1
+
+
+def stable_u64(text: str) -> int:
+    """
+    Stable 64-bit hash for deterministic per-vehicle seeds across processes/runs.
+    """
+    digest = hashlib.blake2b(text.encode("utf-8"), digest_size=8).digest()
+    return int.from_bytes(digest, byteorder="little", signed=False)
+
+
+def _cache_get(cache: OrderedDict | None, key):
+    if cache is None:
+        return None
+    if key not in cache:
+        return None
+    value = cache.pop(key)
+    cache[key] = value
+    return value
+
+
+def _cache_put(cache: OrderedDict | None, key, value, max_size: int):
+    if cache is None or max_size <= 0:
+        return
+    if key in cache:
+        cache.pop(key, None)
+    cache[key] = value
+    while len(cache) > max_size:
+        cache.popitem(last=False)
+
+
+def _checkpoint_manifest_path(checkpoint_dir: Path) -> Path:
+    return checkpoint_dir / "manifest.json"
+
+
+def _checkpoint_shards_dir(checkpoint_dir: Path) -> Path:
+    return checkpoint_dir / "shards"
+
+
+def _checkpoint_signature(
+    *,
+    region: str,
+    n_vehicles: int,
+    n_trips_per_vehicle: int,
+    seed: int,
+    k_shortest: int,
+    p_return: float,
+    detection_radius_m: float,
+    min_trip_distance_m: float,
+    max_trip_distance_m: float,
+    camera_query_backend: str,
+) -> dict:
+    return {
+        "region": str(region),
+        "n_vehicles": int(n_vehicles),
+        "n_trips_per_vehicle": int(n_trips_per_vehicle),
+        "seed": int(seed),
+        "k_shortest": int(k_shortest),
+        "p_return": float(p_return),
+        "detection_radius_m": float(detection_radius_m),
+        "min_trip_distance_m": float(min_trip_distance_m),
+        "max_trip_distance_m": float(max_trip_distance_m),
+        "camera_query_backend": str(camera_query_backend),
+    }
+
+
+def _load_checkpoint_state(
+    checkpoint_dir: Path,
+    signature: dict,
+    n_vehicles: int,
+    store_trip_metadata: bool,
+    verbose: bool,
+) -> tuple[dict[int, dict], dict[int, list], set[int], dict, int]:
+    manifest_path = _checkpoint_manifest_path(checkpoint_dir)
+    shards_dir = _checkpoint_shards_dir(checkpoint_dir)
+
+    if not manifest_path.exists():
+        return {}, {}, set(), {}, 0
+
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        if verbose:
+            print(f"[WARN] Failed to read checkpoint manifest ({manifest_path}): {exc}")
+        return {}, {}, set(), {}, 0
+
+    if int(manifest.get("version", -1)) != CHECKPOINT_VERSION:
+        if verbose:
+            print("[WARN] Checkpoint version mismatch; ignoring previous checkpoint.")
+        return {}, {}, set(), {}, 0
+
+    if manifest.get("signature") != signature:
+        if verbose:
+            print("[WARN] Checkpoint signature mismatch; ignoring previous checkpoint.")
+        return {}, {}, set(), {}, 0
+
+    completed: dict[int, dict] = {}
+    trip_meta: dict[int, list] = {}
+    completed_idx: set[int] = set()
+
+    shard_files = manifest.get("shards", [])
+    for shard_name in shard_files:
+        shard_path = shards_dir / shard_name
+        if not shard_path.exists():
+            continue
+        with shard_path.open("rb") as f:
+            payload = pickle.load(f)
+        records = payload.get("records", [])
+        for vehicle_idx, trajectory, trip_meta_list in records:
+            if vehicle_idx < 0 or vehicle_idx >= n_vehicles:
+                continue
+            completed[vehicle_idx] = trajectory
+            if store_trip_metadata:
+                trip_meta[vehicle_idx] = trip_meta_list or []
+            completed_idx.add(vehicle_idx)
+
+    stats = manifest.get("stats", {}) if isinstance(manifest.get("stats"), dict) else {}
+    shard_counter = int(manifest.get("shard_counter", len(shard_files)))
+    return completed, trip_meta, completed_idx, stats, shard_counter
+
+
+def _flush_checkpoint_records(
+    *,
+    checkpoint_dir: Path,
+    signature: dict,
+    pending_records: list,
+    completed_indices: set[int],
+    stats: dict,
+    shard_counter: int,
+    verbose: bool,
+) -> int:
+    if not pending_records:
+        return shard_counter
+
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    shards_dir = _checkpoint_shards_dir(checkpoint_dir)
+    shards_dir.mkdir(parents=True, exist_ok=True)
+    manifest_path = _checkpoint_manifest_path(checkpoint_dir)
+
+    shard_counter += 1
+    shard_name = f"part_{shard_counter:05d}.pkl"
+    shard_path = shards_dir / shard_name
+
+    with shard_path.open("wb") as f:
+        pickle.dump({"records": pending_records}, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+    if manifest_path.exists():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except Exception:
+            manifest = {}
+    else:
+        manifest = {}
+
+    existing_shards = manifest.get("shards", [])
+    if not isinstance(existing_shards, list):
+        existing_shards = []
+    existing_shards.append(shard_name)
+
+    manifest = {
+        "version": CHECKPOINT_VERSION,
+        "signature": signature,
+        "updated_at": int(time.time()),
+        "completed_vehicle_indices": sorted(int(x) for x in completed_indices),
+        "n_completed": int(len(completed_indices)),
+        "stats": {
+            "total_trips": int(stats.get("total_trips", 0)),
+            "trips_with_hits": int(stats.get("trips_with_hits", 0)),
+            "trips_with_2plus_hits": int(stats.get("trips_with_2plus_hits", 0)),
+            "all_hit_counts": [int(x) for x in stats.get("all_hit_counts", [])],
+        },
+        "shards": existing_shards,
+        "shard_counter": int(shard_counter),
+    }
+
+    tmp_manifest = manifest_path.with_suffix(".tmp")
+    tmp_manifest.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    tmp_manifest.replace(manifest_path)
+
+    if verbose:
+        print(
+            f"[INFO] Checkpoint flushed: {len(completed_indices)} vehicles complete "
+            f"({shard_name})"
+        )
+    return shard_counter
 
 
 def resolve_camera_query_backend(requested_backend: str, n_workers: int) -> str:
@@ -201,7 +389,9 @@ def _init_worker(G_simple_data, G_road_data, node_coords, camera_positions,
                  edge_traffic_weights, k_shortest, p_return, detection_radius_m,
                  lambda_traffic, min_trip_distance_m, max_trip_distance_m,
                  n_trips_per_vehicle, base_seed,
-                 camera_query_backend, camera_query_payload):
+                 camera_query_backend, camera_query_payload,
+                 destination_candidate_pool_size, path_cache_size, route_cache_size,
+                 store_trip_metadata):
     """Initialize worker process with shared data."""
     global _worker_data
     _worker_data = {
@@ -225,6 +415,12 @@ def _init_worker(G_simple_data, G_road_data, node_coords, camera_positions,
         'base_seed': base_seed,
         'camera_query_backend': camera_query_backend,
         'camera_query_payload': camera_query_payload,
+        'destination_candidate_pool_size': destination_candidate_pool_size,
+        'path_cache_size': int(path_cache_size),
+        'route_cache_size': int(route_cache_size),
+        'store_trip_metadata': bool(store_trip_metadata),
+        'ksp_cache': OrderedDict(),
+        'route_obs_cache': OrderedDict(),
     }
 
 
@@ -261,6 +457,12 @@ def _simulate_single_vehicle(args):
     base_seed = _worker_data['base_seed']
     camera_query_backend = _worker_data['camera_query_backend']
     camera_query_payload = _worker_data['camera_query_payload']
+    destination_candidate_pool_size = _worker_data['destination_candidate_pool_size']
+    path_cache_size = _worker_data['path_cache_size']
+    route_cache_size = _worker_data['route_cache_size']
+    store_trip_metadata = _worker_data['store_trip_metadata']
+    ksp_cache = _worker_data['ksp_cache']
+    route_obs_cache = _worker_data['route_obs_cache']
 
     # Create deterministic RNG for this vehicle
     rng = np.random.default_rng(base_seed + vehicle_idx)
@@ -283,7 +485,7 @@ def _simulate_single_vehicle(args):
         # Generate tour structure
         tour = generate_tour_structure(
             n_stops=rng.integers(1, 5),
-            seed=abs(base_seed + hash(vid) + trip_num) % (2**31)
+            seed=(base_seed + stable_u64(f"{vid}:{trip_num}")) % (2**31)
         )
 
         for activity in tour:
@@ -301,6 +503,7 @@ def _simulate_single_vehicle(args):
                 p_return=p_return,
                 min_distance_m=min_trip_distance_m,
                 max_distance_m=max_trip_distance_m,
+                candidate_pool_size=destination_candidate_pool_size,
                 rng=rng,
             )
 
@@ -320,6 +523,10 @@ def _simulate_single_vehicle(args):
                 lambda_traffic=lambda_traffic,
                 camera_query_backend=camera_query_backend,
                 camera_query_payload=camera_query_payload,
+                ksp_cache=ksp_cache,
+                path_cache_size=path_cache_size,
+                route_obs_cache=route_obs_cache,
+                route_cache_size=route_cache_size,
                 rng=rng,
             )
 
@@ -328,14 +535,20 @@ def _simulate_single_vehicle(args):
                 activity_set.add(destination)
 
             # Record trip
-            trip_metadata_list.append({
-                'vehicle_id': vid,
-                'origin': current_node,
-                'destination': destination,
-                'activity': activity,
-                'route_length_m': route_length,
-                'n_camera_hits': len(camera_hits),
-            })
+            if store_trip_metadata:
+                trip_metadata_list.append({
+                    'vehicle_id': vid,
+                    'origin': current_node,
+                    'destination': destination,
+                    'activity': activity,
+                    'route_length_m': route_length,
+                    'n_camera_hits': len(camera_hits),
+                })
+            else:
+                # Keep minimal per-trip hit counts for aggregate observation stats.
+                trip_metadata_list.append({
+                    'n_camera_hits': len(camera_hits),
+                })
 
             # Extend vehicle's camera observations
             vehicle_camera_hits.extend(camera_hits)
@@ -671,6 +884,7 @@ def choose_destination(
     distance_decay_beta: float = 0.001,  # Decay per meter
     min_distance_m: float = 8047.0,  # 5 miles in meters
     max_distance_m: float = 16093.0,  # 10 miles in meters
+    candidate_pool_size: int = 0,
     rng: np.random.Generator = None,
 ) -> int:
     """
@@ -707,6 +921,8 @@ def choose_destination(
         return home_node
 
     candidate_nodes = list(A_dest.keys())
+    if not candidate_nodes:
+        return current_node
 
     # EPR decision: return to known location or explore?
     if rng.random() < p_return and len(activity_set) > 0:
@@ -729,37 +945,31 @@ def choose_destination(
 
     current_lat, current_lon = node_coords[current_node]
 
-    # Compute distances and weights for all candidates
-    all_distances = []
-    all_weights = []
-    all_nodes = []
+    # Optional speedup: sample a weighted candidate pool before distance scoring.
+    if candidate_pool_size and candidate_pool_size > 0 and candidate_pool_size < len(candidate_nodes):
+        attraction = np.array([max(float(A_dest.get(n, 0.0)), 0.0) for n in candidate_nodes], dtype=float)
+        if attraction.sum() <= 0:
+            attraction = np.ones(len(candidate_nodes), dtype=float)
+        probs = attraction / attraction.sum()
+        sampled_idx = rng.choice(
+            len(candidate_nodes),
+            size=int(candidate_pool_size),
+            replace=False,
+            p=probs,
+        )
+        candidate_nodes = [candidate_nodes[int(i)] for i in sampled_idx]
 
-    for node in candidate_nodes:
-        if node == current_node:
-            continue
-        if node not in node_coords:
-            continue
-
-        dest_lat, dest_lon = node_coords[node]
-
-        # Approximate distance in meters (Euclidean approximation)
-        dlat = (dest_lat - current_lat) * 111000
-        dlon = (dest_lon - current_lon) * 111000 * np.cos(np.radians(current_lat))
-        dist_m = np.sqrt(dlat**2 + dlon**2)
-
-        # Gravity weight: attractiveness * distance decay
-        attraction = A_dest.get(node, 0.001)
-        gravity_weight = attraction * np.exp(-distance_decay_beta * dist_m)
-
-        all_distances.append(dist_m)
-        all_weights.append(gravity_weight)
-        all_nodes.append(node)
-
-    if not all_nodes:
+    filtered_nodes = [n for n in candidate_nodes if n != current_node and n in node_coords]
+    if not filtered_nodes:
         return current_node
 
-    all_distances = np.array(all_distances)
-    all_weights = np.array(all_weights)
+    node_lats = np.array([node_coords[n][0] for n in filtered_nodes], dtype=float)
+    node_lons = np.array([node_coords[n][1] for n in filtered_nodes], dtype=float)
+    dlat_m = (node_lats - current_lat) * 111000.0
+    dlon_m = (node_lons - current_lon) * 111000.0 * np.cos(np.radians(current_lat))
+    all_distances = np.sqrt(dlat_m * dlat_m + dlon_m * dlon_m)
+    attraction = np.array([max(float(A_dest.get(n, 1e-6)), 1e-6) for n in filtered_nodes], dtype=float)
+    all_weights = attraction * np.exp(-distance_decay_beta * all_distances)
 
     # Apply distance constraints
     # Priority: prefer nodes in [min_dist, max_dist] range
@@ -774,17 +984,17 @@ def choose_destination(
         valid_mask = np.ones(len(all_distances), dtype=bool)
 
     # Filter to valid candidates
-    filtered_nodes = [n for n, v in zip(all_nodes, valid_mask) if v]
+    dist_valid_nodes = [n for n, v in zip(filtered_nodes, valid_mask) if v]
     filtered_weights = all_weights[valid_mask]
 
-    if len(filtered_nodes) == 0:
+    if len(dist_valid_nodes) == 0:
         return current_node
 
     if filtered_weights.sum() <= 0:
         filtered_weights = np.ones(len(filtered_weights))
 
     probs = filtered_weights / filtered_weights.sum()
-    return rng.choice(filtered_nodes, p=probs)
+    return rng.choice(dist_valid_nodes, p=probs)
 
 
 # =============================================================================
@@ -866,6 +1076,10 @@ def route_and_observe(
     lambda_traffic: float = 0.5,
     camera_query_backend: str = "scipy-kdtree",
     camera_query_payload: dict | None = None,
+    ksp_cache: OrderedDict | None = None,
+    path_cache_size: int = 0,
+    route_obs_cache: OrderedDict | None = None,
+    route_cache_size: int = 0,
     rng: np.random.Generator = None,
 ) -> tuple[list[int], list[int], float]:
     """
@@ -898,45 +1112,48 @@ def route_and_observe(
     if origin == destination:
         return [origin], [], 0.0
 
-    # Find k-shortest paths using pre-converted simple graph
-    paths = find_k_shortest_paths(G_simple, origin, destination, k=k_shortest)
+    cache_key = (int(origin), int(destination), int(k_shortest))
+    path_candidates = _cache_get(ksp_cache, cache_key)
+    if path_candidates is None:
+        # Find k-shortest paths using pre-converted simple graph
+        paths = find_k_shortest_paths(G_simple, origin, destination, k=k_shortest)
+        if not paths:
+            _cache_put(ksp_cache, cache_key, [], path_cache_size)
+            return [], [], 0.0
 
-    if not paths:
+        # Precompute per-path stats once and cache for repeated OD lookups.
+        path_candidates = []
+        for path in paths:
+            length = 0.0
+            traffic_sum = 0.0
+            n_edges = 0
+
+            for i in range(len(path) - 1):
+                edge_data = G_road.get_edge_data(path[i], path[i+1])
+                if edge_data:
+                    first_edge = list(edge_data.values())[0]
+                    length += first_edge.get('length', 100)
+                    if edge_traffic_weights is not None:
+                        edge_key = (path[i], path[i+1], 0)
+                        traffic_weight = edge_traffic_weights.get(edge_key, 0.5)
+                        traffic_sum += traffic_weight
+                        n_edges += 1
+
+            traffic_mean = (traffic_sum / n_edges) if n_edges > 0 else 0.5
+            path_candidates.append({
+                "path": path,
+                "length": float(length),
+                "traffic_mean": float(traffic_mean),
+            })
+        _cache_put(ksp_cache, cache_key, path_candidates, path_cache_size)
+
+    if not path_candidates:
         # No path found
         return [], [], 0.0
 
-    # Calculate path lengths and traffic means
-    path_lengths = []
-    path_traffic_means = []
-
-    for path in paths:
-        length = 0.0
-        traffic_sum = 0.0
-        n_edges = 0
-
-        for i in range(len(path) - 1):
-            edge_data = G_road.get_edge_data(path[i], path[i+1])
-            if edge_data:
-                # Handle MultiDiGraph - get first edge
-                first_edge = list(edge_data.values())[0]
-                length += first_edge.get('length', 100)
-
-                # Get traffic weight for this edge
-                if edge_traffic_weights is not None:
-                    # Try (u, v, 0) key first (most common)
-                    edge_key = (path[i], path[i+1], 0)
-                    traffic_weight = edge_traffic_weights.get(edge_key, 0.5)
-                    traffic_sum += traffic_weight
-                    n_edges += 1
-
-        path_lengths.append(length)
-        if n_edges > 0:
-            path_traffic_means.append(traffic_sum / n_edges)
-        else:
-            path_traffic_means.append(0.5)  # Default mid-range
-
-    path_lengths = np.array(path_lengths)
-    path_traffic_means = np.array(path_traffic_means)
+    paths = [item["path"] for item in path_candidates]
+    path_lengths = np.array([item["length"] for item in path_candidates], dtype=float)
+    path_traffic_means = np.array([item["traffic_mean"] for item in path_candidates], dtype=float)
 
     # Compute utility: U = -length + lambda_traffic * traffic_mean * scale + Gumbel
     # Higher traffic_mean = prefer routes on higher-traffic corridors
@@ -946,15 +1163,25 @@ def route_and_observe(
         utilities = (
             -path_lengths
             + lambda_traffic * path_traffic_means * traffic_scale
-            + rng.gumbel(size=len(paths)) * 500
+            + rng.gumbel(size=len(path_candidates)) * 500
         )
     else:
         # Original utility: -length + Gumbel noise
-        utilities = -path_lengths + rng.gumbel(size=len(paths)) * 500
+        utilities = -path_lengths + rng.gumbel(size=len(path_candidates)) * 500
 
     selected_idx = np.argmax(utilities)
     route = paths[selected_idx]
     route_length = path_lengths[selected_idx]
+
+    route_key = tuple(route)
+    route_obs_key = (
+        route_key,
+        float(detection_radius_m),
+        str(camera_query_backend),
+    )
+    cached_hits = _cache_get(route_obs_cache, route_obs_key)
+    if cached_hits is not None:
+        return route, list(cached_hits), route_length
 
     use_cuda_query = False
     if camera_query_backend == "torch-cuda" and camera_query_payload is not None:
@@ -991,6 +1218,8 @@ def route_and_observe(
                 if cam_id not in seen_cameras:
                     camera_hits.append(cam_id)
                     seen_cameras.add(cam_id)
+
+    _cache_put(route_obs_cache, route_obs_key, tuple(camera_hits), route_cache_size)
 
     return route, camera_hits, route_length
 
@@ -1063,6 +1292,13 @@ def simulate_road_network_trips(
     camera_query_backend: str = "scipy-kdtree",
     camera_query_cuda_batch_size: int = 256,
     camera_query_cuda_min_work: int = 2_000_000,
+    destination_candidate_pool_size: int = 512,
+    path_cache_size: int = 10000,
+    route_cache_size: int = 20000,
+    checkpoint_dir: Path | str | None = None,
+    checkpoint_interval_vehicles: int = 250,
+    resume_from_checkpoint: bool = False,
+    store_trip_metadata: bool = True,
     traffic_blend_factor: float = 0.7,
     lambda_traffic: float = 0.5,
     # Trip distance constraints
@@ -1101,6 +1337,13 @@ def simulate_road_network_trips(
         camera_query_backend: scipy-kdtree | torch-cuda | auto
         camera_query_cuda_batch_size: Batch size for CUDA route-node processing
         camera_query_cuda_min_work: Minimum (route_nodes * cameras) before CUDA path activates
+        destination_candidate_pool_size: Exploration candidate pool size; 0 disables sampling
+        path_cache_size: Max OD-route cache entries per worker/process
+        route_cache_size: Max route->camera-hit cache entries per worker/process
+        checkpoint_dir: Optional directory for incremental checkpoint shards
+        checkpoint_interval_vehicles: Flush checkpoint every N completed vehicles
+        resume_from_checkpoint: Resume from checkpoint shards if available and signature matches
+        store_trip_metadata: Keep per-trip metadata in-memory/results (set False to reduce memory)
         min_trip_distance_m: Minimum trip distance (default 5 miles)
         max_trip_distance_m: Maximum trip distance (default 10 miles)
 
@@ -1110,12 +1353,19 @@ def simulate_road_network_trips(
         - trip_metadata: OD pairs, route lengths, hit counts
         - network_stats: Road network size, camera coverage, P(observation)
     """
-    rng = np.random.default_rng(seed)
     active_camera_query_backend = resolve_camera_query_backend(camera_query_backend, n_workers=n_workers)
     if camera_query_cuda_batch_size <= 0:
         raise ValueError("camera_query_cuda_batch_size must be >= 1")
     if camera_query_cuda_min_work <= 0:
         raise ValueError("camera_query_cuda_min_work must be >= 1")
+    if destination_candidate_pool_size < 0:
+        raise ValueError("destination_candidate_pool_size must be >= 0")
+    if path_cache_size < 0:
+        raise ValueError("path_cache_size must be >= 0")
+    if route_cache_size < 0:
+        raise ValueError("route_cache_size must be >= 0")
+    if checkpoint_interval_vehicles <= 0:
+        raise ValueError("checkpoint_interval_vehicles must be >= 1")
 
     if verbose:
         print(f"\n{'='*60}")
@@ -1124,6 +1374,11 @@ def simulate_road_network_trips(
         print(
             "Camera query backend: "
             f"requested={camera_query_backend} active={active_camera_query_backend}"
+        )
+        print(
+            "Performance knobs: "
+            f"candidate_pool={destination_candidate_pool_size}, "
+            f"path_cache={path_cache_size}, route_cache={route_cache_size}"
         )
 
     # Load cameras
@@ -1217,9 +1472,6 @@ def simulate_road_network_trips(
         if n_workers > 1:
             print(f"  Using {n_workers} worker processes")
 
-    all_trajectories = []
-    trip_metadata = []
-
     # Track P(observation) stats
     trips_with_hits = 0
     trips_with_2plus_hits = 0
@@ -1227,16 +1479,116 @@ def simulate_road_network_trips(
     all_hit_counts = []
 
     vehicle_ids = list(vehicle_homes.keys())
+    trajectories_by_idx: list[dict | None] = [None] * len(vehicle_ids)
+    trip_metadata_by_idx: list[list | None] = [None] * len(vehicle_ids) if store_trip_metadata else []
+    completed_vehicle_indices: set[int] = set()
+    checkpoint_pending_records: list[tuple[int, dict, list]] = []
+    checkpoint_shard_counter = 0
+    checkpoint_root: Path | None = None
+
+    checkpoint_signature = _checkpoint_signature(
+        region=region,
+        n_vehicles=n_vehicles,
+        n_trips_per_vehicle=n_trips_per_vehicle,
+        seed=seed,
+        k_shortest=k_shortest,
+        p_return=p_return,
+        detection_radius_m=detection_radius_m,
+        min_trip_distance_m=min_trip_distance_m,
+        max_trip_distance_m=max_trip_distance_m,
+        camera_query_backend=active_camera_query_backend,
+    )
+
+    if checkpoint_dir:
+        checkpoint_root = Path(checkpoint_dir).expanduser().resolve()
+        checkpoint_root.mkdir(parents=True, exist_ok=True)
+
+        if resume_from_checkpoint:
+            (
+                loaded_trajectories,
+                loaded_trip_metadata,
+                loaded_completed_indices,
+                loaded_stats,
+                checkpoint_shard_counter,
+            ) = _load_checkpoint_state(
+                checkpoint_dir=checkpoint_root,
+                signature=checkpoint_signature,
+                n_vehicles=n_vehicles,
+                store_trip_metadata=store_trip_metadata,
+                verbose=verbose,
+            )
+            for idx, trajectory in loaded_trajectories.items():
+                trajectories_by_idx[idx] = trajectory
+            if store_trip_metadata:
+                for idx, meta in loaded_trip_metadata.items():
+                    trip_metadata_by_idx[idx] = meta
+            completed_vehicle_indices = set(loaded_completed_indices)
+
+            if loaded_stats:
+                total_trips = int(loaded_stats.get("total_trips", 0))
+                trips_with_hits = int(loaded_stats.get("trips_with_hits", 0))
+                trips_with_2plus_hits = int(loaded_stats.get("trips_with_2plus_hits", 0))
+                all_hit_counts = [int(x) for x in loaded_stats.get("all_hit_counts", [])]
+            elif store_trip_metadata and loaded_trip_metadata:
+                for meta_list in loaded_trip_metadata.values():
+                    for trip in meta_list:
+                        total_trips += 1
+                        n_hits = int(trip.get("n_camera_hits", 0))
+                        all_hit_counts.append(n_hits)
+                        if n_hits >= 1:
+                            trips_with_hits += 1
+                        if n_hits >= 2:
+                            trips_with_2plus_hits += 1
+
+            if verbose and completed_vehicle_indices:
+                print(
+                    f"[INFO] Resumed checkpoint: {len(completed_vehicle_indices)}/{n_vehicles} "
+                    "vehicles already complete."
+                )
+
+    def _update_trip_stats(trip_meta_list: list[dict]) -> None:
+        nonlocal total_trips, trips_with_hits, trips_with_2plus_hits, all_hit_counts
+        for trip in trip_meta_list:
+            total_trips += 1
+            n_hits = int(trip.get("n_camera_hits", 0))
+            all_hit_counts.append(n_hits)
+            if n_hits >= 1:
+                trips_with_hits += 1
+            if n_hits >= 2:
+                trips_with_2plus_hits += 1
+
+    def _flush_checkpoint_if_needed(force: bool = False) -> None:
+        nonlocal checkpoint_shard_counter
+        if checkpoint_root is None:
+            return
+        if (not force) and (len(checkpoint_pending_records) < checkpoint_interval_vehicles):
+            return
+        stats_payload = {
+            "total_trips": total_trips,
+            "trips_with_hits": trips_with_hits,
+            "trips_with_2plus_hits": trips_with_2plus_hits,
+            "all_hit_counts": all_hit_counts,
+        }
+        checkpoint_shard_counter = _flush_checkpoint_records(
+            checkpoint_dir=checkpoint_root,
+            signature=checkpoint_signature,
+            pending_records=checkpoint_pending_records,
+            completed_indices=completed_vehicle_indices,
+            stats=stats_payload,
+            shard_counter=checkpoint_shard_counter,
+            verbose=verbose,
+        )
+        checkpoint_pending_records.clear()
+
+    pending_worker_args = [
+        (vid, vehicle_homes[vid], idx)
+        for idx, vid in enumerate(vehicle_ids)
+        if idx not in completed_vehicle_indices
+    ]
 
     if n_workers > 1:
         # Parallel execution using multiprocessing
         from multiprocessing import Pool
-
-        # Prepare worker arguments
-        worker_args = [
-            (vid, vehicle_homes[vid], idx)
-            for idx, vid in enumerate(vehicle_ids)
-        ]
 
         # Initialize pool with shared data
         init_args = (
@@ -1244,11 +1596,9 @@ def simulate_road_network_trips(
             camera_tree, camera_ids, A_work, A_home, A_other,
             edge_traffic_weights, k_shortest, p_return, detection_radius_m,
             lambda_traffic, min_trip_distance_m, max_trip_distance_m,
-            n_trips_per_vehicle, seed, active_camera_query_backend, camera_query_payload
+            n_trips_per_vehicle, seed, active_camera_query_backend, camera_query_payload,
+            destination_candidate_pool_size, path_cache_size, route_cache_size, store_trip_metadata
         )
-
-        trajectories_by_idx = [None] * len(worker_args)
-        trip_metadata_by_idx = [None] * len(worker_args)
 
         if mp_chunksize <= 0:
             raise ValueError("mp_chunksize must be >= 1")
@@ -1256,48 +1606,45 @@ def simulate_road_network_trips(
         with Pool(processes=n_workers, initializer=_init_worker, initargs=init_args) as pool:
             # Use unordered completion for smoother progress updates.
             for vehicle_idx, trajectory, trip_meta_list in tqdm(
-                pool.imap_unordered(_simulate_single_vehicle, worker_args, chunksize=mp_chunksize),
-                total=len(worker_args),
+                pool.imap_unordered(_simulate_single_vehicle, pending_worker_args, chunksize=mp_chunksize),
+                total=len(pending_worker_args),
                 disable=not verbose,
                 desc="Simulating vehicles (parallel)",
             ):
                 trajectories_by_idx[vehicle_idx] = trajectory
-                trip_metadata_by_idx[vehicle_idx] = trip_meta_list
+                if store_trip_metadata:
+                    trip_metadata_by_idx[vehicle_idx] = trip_meta_list
 
-        # Aggregate results in original vehicle index order (deterministic output ordering).
-        for vehicle_idx in range(len(worker_args)):
-            trajectory = trajectories_by_idx[vehicle_idx]
-            trip_meta_list = trip_metadata_by_idx[vehicle_idx] or []
-            if trajectory is None:
-                continue
+                _update_trip_stats(trip_meta_list)
+                completed_vehicle_indices.add(vehicle_idx)
 
-            all_trajectories.append(trajectory)
-            trip_metadata.extend(trip_meta_list)
-
-            # Track P(observation) stats from trip metadata
-            for trip in trip_meta_list:
-                total_trips += 1
-                n_hits = trip['n_camera_hits']
-                all_hit_counts.append(n_hits)
-                if n_hits >= 1:
-                    trips_with_hits += 1
-                if n_hits >= 2:
-                    trips_with_2plus_hits += 1
+                if checkpoint_root is not None:
+                    checkpoint_pending_records.append(
+                        (vehicle_idx, trajectory, trip_meta_list if store_trip_metadata else [])
+                    )
+                    _flush_checkpoint_if_needed(force=False)
 
     else:
-        # Sequential execution (original code)
-        for vid in tqdm(vehicle_ids, disable=not verbose, desc="Simulating vehicles"):
-            home_node = vehicle_homes[vid]
+        # Sequential execution
+        ksp_cache = OrderedDict()
+        route_obs_cache = OrderedDict()
+
+        for vid, home_node, vehicle_idx in tqdm(
+            pending_worker_args,
+            disable=not verbose,
+            desc="Simulating vehicles",
+        ):
+            vehicle_rng = np.random.default_rng(seed + vehicle_idx)
             activity_set = set()
             vehicle_camera_hits = []
-
             current_node = home_node
+            trip_meta_list = [] if store_trip_metadata else []
 
             for trip_num in range(n_trips_per_vehicle):
                 # Generate tour structure
                 tour = generate_tour_structure(
-                    n_stops=rng.integers(1, 5),
-                    seed=abs(seed + hash(vid) + trip_num) % (2**31)
+                    n_stops=vehicle_rng.integers(1, 5),
+                    seed=(seed + stable_u64(f"{vid}:{trip_num}")) % (2**31)
                 )
 
                 for activity in tour:
@@ -1315,7 +1662,8 @@ def simulate_road_network_trips(
                         p_return=p_return,
                         min_distance_m=min_trip_distance_m,
                         max_distance_m=max_trip_distance_m,
-                        rng=rng,
+                        candidate_pool_size=destination_candidate_pool_size,
+                        rng=vehicle_rng,
                     )
 
                     # Route and observe cameras (with optional traffic preference)
@@ -1334,7 +1682,11 @@ def simulate_road_network_trips(
                         lambda_traffic=lambda_traffic,
                         camera_query_backend=active_camera_query_backend,
                         camera_query_payload=camera_query_payload,
-                        rng=rng,
+                        ksp_cache=ksp_cache,
+                        path_cache_size=path_cache_size,
+                        route_obs_cache=route_obs_cache,
+                        route_cache_size=route_cache_size,
+                        rng=vehicle_rng,
                     )
 
                     # Update activity set
@@ -1342,14 +1694,16 @@ def simulate_road_network_trips(
                         activity_set.add(destination)
 
                     # Record trip
-                    trip_metadata.append({
+                    trip_row = {
                         'vehicle_id': vid,
                         'origin': current_node,
                         'destination': destination,
                         'activity': activity,
                         'route_length_m': route_length,
                         'n_camera_hits': len(camera_hits),
-                    })
+                    }
+                    if store_trip_metadata:
+                        trip_meta_list.append(trip_row)
 
                     # Track P(observation)
                     total_trips += 1
@@ -1366,12 +1720,34 @@ def simulate_road_network_trips(
                     # Move to destination
                     current_node = destination
 
-            # Store vehicle's complete camera observation history
-            all_trajectories.append({
+            trajectory = {
                 'vehicle_id': vid,
                 'camera_hits': vehicle_camera_hits,
                 'home_node': home_node,
-            })
+            }
+            trajectories_by_idx[vehicle_idx] = trajectory
+            if store_trip_metadata:
+                trip_metadata_by_idx[vehicle_idx] = trip_meta_list
+            completed_vehicle_indices.add(vehicle_idx)
+
+            if checkpoint_root is not None:
+                checkpoint_pending_records.append(
+                    (vehicle_idx, trajectory, trip_meta_list if store_trip_metadata else [])
+                )
+                _flush_checkpoint_if_needed(force=False)
+
+    _flush_checkpoint_if_needed(force=True)
+
+    # Aggregate results in deterministic vehicle index order.
+    all_trajectories = [x for x in trajectories_by_idx if x is not None]
+    if store_trip_metadata:
+        trip_metadata: list[dict] = []
+        for meta_list in trip_metadata_by_idx:
+            if not meta_list:
+                continue
+            trip_metadata.extend(meta_list)
+    else:
+        trip_metadata = []
 
     # Compute P(observation) metrics
     p_obs_1 = trips_with_hits / total_trips if total_trips > 0 else 0
@@ -1415,6 +1791,13 @@ def simulate_road_network_trips(
             'camera_query_backend': active_camera_query_backend,
             'camera_query_cuda_batch_size': int(camera_query_cuda_batch_size),
             'camera_query_cuda_min_work': int(camera_query_cuda_min_work),
+            'destination_candidate_pool_size': int(destination_candidate_pool_size),
+            'path_cache_size': int(path_cache_size),
+            'route_cache_size': int(route_cache_size),
+            'checkpoint_dir': str(checkpoint_root) if checkpoint_root is not None else None,
+            'checkpoint_interval_vehicles': int(checkpoint_interval_vehicles),
+            'resume_from_checkpoint': bool(resume_from_checkpoint),
+            'store_trip_metadata': bool(store_trip_metadata),
         },
     }
 
