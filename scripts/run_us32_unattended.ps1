@@ -11,6 +11,9 @@ param(
     [int]$CooldownMinutes = 3,
     [int]$BlasThreads = 1,
     [int]$MpChunksize = 2,
+    [string]$CameraQueryBackend = "scipy-kdtree",
+    [int]$CameraQueryCudaBatchSize = 256,
+    [int]$CameraQueryCudaMinWork = 2000000,
     [string]$PythonExe = "python",
     [string]$LogsRoot = "logs/us32_unattended",
     [int]$KeepLastRuns = 12,
@@ -37,6 +40,11 @@ if ($Workers -le 0 -or $MinWorkers -le 0 -or $WorkerStepDown -le 0 -or $MaxRetri
 if ($MinWorkers -gt $Workers) { $MinWorkers = $Workers }
 if ($BlasThreads -le 0) { throw "BlasThreads must be >= 1" }
 if ($MpChunksize -le 0) { throw "MpChunksize must be >= 1" }
+if ($CameraQueryBackend -notin @("scipy-kdtree", "torch-cuda", "auto")) {
+    throw "CameraQueryBackend must be one of: scipy-kdtree, torch-cuda, auto"
+}
+if ($CameraQueryCudaBatchSize -le 0) { throw "CameraQueryCudaBatchSize must be >= 1" }
+if ($CameraQueryCudaMinWork -le 0) { throw "CameraQueryCudaMinWork must be >= 1" }
 
 $RunId = Get-Date -Format "yyyyMMdd_HHmmss"
 $LogsRootAbs = Join-Path $RepoRoot $LogsRoot
@@ -174,6 +182,9 @@ $state = @{
         cooldown_minutes = $CooldownMinutes
         blas_threads = $BlasThreads
         mp_chunksize = $MpChunksize
+        camera_query_backend = $CameraQueryBackend
+        camera_query_cuda_batch_size = $CameraQueryCudaBatchSize
+        camera_query_cuda_min_work = $CameraQueryCudaMinWork
         skip_preflight = [bool]$SkipPreflight
         require_fresh_data = [bool]$RequireFreshData
         include_chicago = [bool]$IncludeChicago
@@ -198,7 +209,12 @@ Write-Log "Run ID: $RunId"
 Write-Log "Queue size: $($queue.Count)"
 Write-Log "Queue order: $($queue -join ', ')"
 Write-Log "Workers=$Workers MinWorkers=$MinWorkers StepDown=$WorkerStepDown Retries=$MaxRetriesPerMetro"
-Write-Log "BLAS threads=$BlasThreads, mp_chunksize=$MpChunksize"
+Write-Log (
+    "BLAS threads=$BlasThreads, mp_chunksize=$MpChunksize, " +
+    "camera_query_backend=$CameraQueryBackend, " +
+    "camera_query_cuda_batch_size=$CameraQueryCudaBatchSize, " +
+    "camera_query_cuda_min_work=$CameraQueryCudaMinWork"
+)
 
 $env:OMP_NUM_THREADS = "$BlasThreads"
 $env:MKL_NUM_THREADS = "$BlasThreads"
@@ -257,6 +273,9 @@ foreach ($metro in $queue) {
             "--camera-catalog-csv", $CameraCatalogCsv,
             "--workers", "$workersThisAttempt",
             "--mp-chunksize", "$MpChunksize",
+            "--camera-query-backend", "$CameraQueryBackend",
+            "--camera-query-cuda-batch-size", "$CameraQueryCudaBatchSize",
+            "--camera-query-cuda-min-work", "$CameraQueryCudaMinWork",
             "--blas-threads", "$BlasThreads",
             "--keep-last-runs", "$KeepLastRuns",
             "--skip-preflight"

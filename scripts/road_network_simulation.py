@@ -40,6 +40,11 @@ import osmnx as ox
 from scipy.spatial import cKDTree
 from tqdm import tqdm
 
+try:
+    import torch
+except Exception:  # pragma: no cover - optional
+    torch = None
+
 
 # =============================================================================
 # MULTIPROCESSING GLOBALS (initialized per worker)
@@ -48,11 +53,155 @@ from tqdm import tqdm
 _worker_data = {}
 
 
+def resolve_camera_query_backend(requested_backend: str, n_workers: int) -> str:
+    """
+    Resolve requested camera query backend.
+
+    Options:
+    - scipy-kdtree
+    - torch-cuda
+    - auto
+    """
+    mode = (requested_backend or "scipy-kdtree").strip().lower()
+    if mode not in {"scipy-kdtree", "torch-cuda", "auto"}:
+        raise ValueError(f"Unsupported camera query backend: {requested_backend}")
+
+    if mode == "auto":
+        if torch is not None and torch.cuda.is_available() and n_workers == 1:
+            return "torch-cuda"
+        return "scipy-kdtree"
+
+    if mode == "torch-cuda":
+        if torch is None:
+            print("[WARN] torch-cuda requested but torch is not installed. Falling back to scipy-kdtree.")
+            return "scipy-kdtree"
+        if not torch.cuda.is_available():
+            print("[WARN] torch-cuda requested but CUDA is unavailable. Falling back to scipy-kdtree.")
+            return "scipy-kdtree"
+        if n_workers > 1:
+            print(
+                "[WARN] torch-cuda requested with n_workers > 1. "
+                "Falling back to scipy-kdtree to avoid multi-process CUDA contention."
+            )
+            return "scipy-kdtree"
+        return "torch-cuda"
+
+    return "scipy-kdtree"
+
+
+def build_camera_query_payload(
+    camera_positions: dict[int, tuple[float, float]],
+    camera_ids: list[int],
+    camera_query_backend: str,
+    cuda_batch_size: int = 256,
+    cuda_min_work: int = 2_000_000,
+) -> dict | None:
+    """
+    Build backend-specific payload for camera proximity queries.
+    """
+    if camera_query_backend != "torch-cuda":
+        return None
+    if torch is None or not torch.cuda.is_available():
+        return None
+
+    xs_m: list[float] = []
+    ys_m: list[float] = []
+    for cid in camera_ids:
+        lat = float(camera_positions[cid][0])
+        lon = float(camera_positions[cid][1])
+        xs_m.append(lon * 111000.0 * np.cos(np.radians(lat)))
+        ys_m.append(lat * 111000.0)
+    if not xs_m:
+        return None
+
+    device = torch.device("cuda")
+    return {
+        "camera_xs_m_t": torch.tensor(xs_m, dtype=torch.float32, device=device),
+        "camera_ys_m_t": torch.tensor(ys_m, dtype=torch.float32, device=device),
+        "camera_ids": list(camera_ids),
+        "cuda_batch_size": max(1, int(cuda_batch_size)),
+        "cuda_min_work": max(1, int(cuda_min_work)),
+    }
+
+
+def _query_nearby_cameras_kdtree(
+    lat: float,
+    lon: float,
+    camera_tree: cKDTree,
+    camera_ids: list[int],
+    detection_radius_m: float,
+) -> list[int]:
+    lat_center = lat
+    x_m = lon * 111000 * np.cos(np.radians(lat_center))
+    y_m = lat * 111000
+    nearby_indices = camera_tree.query_ball_point([x_m, y_m], detection_radius_m)
+    return [camera_ids[idx] for idx in nearby_indices]
+
+
+def _collect_camera_hits_torch_cuda(
+    route: list[int],
+    node_coords: dict[int, tuple[float, float]],
+    payload: dict,
+    detection_radius_m: float,
+) -> list[int]:
+    """
+    Batched CUDA camera-hit detection for all unique nodes in route.
+    """
+    camera_xs_m_t = payload["camera_xs_m_t"]
+    camera_ys_m_t = payload["camera_ys_m_t"]
+    camera_ids = payload["camera_ids"]
+    batch_size = int(payload.get("cuda_batch_size", 256))
+
+    route_nodes: list[int] = []
+    seen_nodes = set()
+    for node in route:
+        if node in seen_nodes:
+            continue
+        seen_nodes.add(node)
+        if node in node_coords:
+            route_nodes.append(node)
+
+    if not route_nodes:
+        return []
+
+    node_lats = np.array([node_coords[n][0] for n in route_nodes], dtype=np.float32)
+    node_lons = np.array([node_coords[n][1] for n in route_nodes], dtype=np.float32)
+    node_lats_t = torch.as_tensor(node_lats, device=camera_xs_m_t.device)
+    node_lons_t = torch.as_tensor(node_lons, device=camera_xs_m_t.device)
+
+    r2 = float(detection_radius_m) * float(detection_radius_m)
+    seen_cameras = set()
+    camera_hits: list[int] = []
+
+    for start in range(0, node_lats_t.shape[0], batch_size):
+        end = min(start + batch_size, node_lats_t.shape[0])
+        lats = node_lats_t[start:end]  # [B]
+        lons = node_lons_t[start:end]  # [B]
+
+        x_nodes_m = lons * 111000.0 * torch.cos(torch.deg2rad(lats))
+        y_nodes_m = lats * 111000.0
+        dx = x_nodes_m[:, None] - camera_xs_m_t[None, :]
+        dy = y_nodes_m[:, None] - camera_ys_m_t[None, :]
+        dist2 = dx * dx + dy * dy
+        hit_pairs = torch.nonzero(dist2 <= r2, as_tuple=False)
+        if hit_pairs.numel() == 0:
+            continue
+
+        for _, col in hit_pairs.detach().cpu().tolist():
+            cam_id = camera_ids[int(col)]
+            if cam_id not in seen_cameras:
+                seen_cameras.add(cam_id)
+                camera_hits.append(cam_id)
+
+    return camera_hits
+
+
 def _init_worker(G_simple_data, G_road_data, node_coords, camera_positions,
                  camera_tree_data, camera_ids, A_work, A_home, A_other,
                  edge_traffic_weights, k_shortest, p_return, detection_radius_m,
                  lambda_traffic, min_trip_distance_m, max_trip_distance_m,
-                 n_trips_per_vehicle, base_seed):
+                 n_trips_per_vehicle, base_seed,
+                 camera_query_backend, camera_query_payload):
     """Initialize worker process with shared data."""
     global _worker_data
     _worker_data = {
@@ -74,6 +223,8 @@ def _init_worker(G_simple_data, G_road_data, node_coords, camera_positions,
         'max_trip_distance_m': max_trip_distance_m,
         'n_trips_per_vehicle': n_trips_per_vehicle,
         'base_seed': base_seed,
+        'camera_query_backend': camera_query_backend,
+        'camera_query_payload': camera_query_payload,
     }
 
 
@@ -108,6 +259,8 @@ def _simulate_single_vehicle(args):
     max_trip_distance_m = _worker_data['max_trip_distance_m']
     n_trips_per_vehicle = _worker_data['n_trips_per_vehicle']
     base_seed = _worker_data['base_seed']
+    camera_query_backend = _worker_data['camera_query_backend']
+    camera_query_payload = _worker_data['camera_query_payload']
 
     # Create deterministic RNG for this vehicle
     rng = np.random.default_rng(base_seed + vehicle_idx)
@@ -165,6 +318,8 @@ def _simulate_single_vehicle(args):
                 detection_radius_m=detection_radius_m,
                 edge_traffic_weights=edge_traffic_weights,
                 lambda_traffic=lambda_traffic,
+                camera_query_backend=camera_query_backend,
+                camera_query_payload=camera_query_payload,
                 rng=rng,
             )
 
@@ -709,6 +864,8 @@ def route_and_observe(
     detection_radius_m: float = 100.0,
     edge_traffic_weights: dict[tuple[int, int, int], float] | None = None,
     lambda_traffic: float = 0.5,
+    camera_query_backend: str = "scipy-kdtree",
+    camera_query_payload: dict | None = None,
     rng: np.random.Generator = None,
 ) -> tuple[list[int], list[int], float]:
     """
@@ -799,53 +956,41 @@ def route_and_observe(
     route = paths[selected_idx]
     route_length = path_lengths[selected_idx]
 
-    # Walk along route and detect cameras
-    camera_hits = []
-    seen_cameras = set()
-    cumulative_distance = 0.0
+    use_cuda_query = False
+    if camera_query_backend == "torch-cuda" and camera_query_payload is not None:
+        n_route_nodes = len({n for n in route if n in node_coords})
+        n_cameras = len(camera_query_payload.get("camera_ids", []))
+        work = n_route_nodes * n_cameras
+        min_work = int(camera_query_payload.get("cuda_min_work", 1))
+        use_cuda_query = work >= min_work
 
-    for i in range(len(route) - 1):
-        node = route[i]
-        next_node = route[i + 1]
+    if use_cuda_query:
+        camera_hits = _collect_camera_hits_torch_cuda(
+            route=route,
+            node_coords=node_coords,
+            payload=camera_query_payload,
+            detection_radius_m=detection_radius_m,
+        )
+    else:
+        # Walk along route and detect cameras (CPU KD-tree path).
+        camera_hits = []
+        seen_cameras = set()
 
-        if node not in node_coords:
-            continue
-
-        lat, lon = node_coords[node]
-
-        # Convert to approximate meters for KD-tree query
-        # This is approximate - for production use projected coordinates
-        lat_center = lat
-        x_m = lon * 111000 * np.cos(np.radians(lat_center))
-        y_m = lat * 111000
-
-        # Query cameras within detection radius
-        nearby_indices = camera_tree.query_ball_point([x_m, y_m], detection_radius_m)
-
-        for idx in nearby_indices:
-            cam_id = camera_ids[idx]
-            if cam_id not in seen_cameras:
-                camera_hits.append(cam_id)
-                seen_cameras.add(cam_id)
-
-        # Update cumulative distance
-        edge_data = G_road.get_edge_data(node, next_node)
-        if edge_data:
-            first_edge = list(edge_data.values())[0]
-            cumulative_distance += first_edge.get('length', 100)
-
-    # Check final node too
-    if route and route[-1] in node_coords:
-        lat, lon = node_coords[route[-1]]
-        lat_center = lat
-        x_m = lon * 111000 * np.cos(np.radians(lat_center))
-        y_m = lat * 111000
-        nearby_indices = camera_tree.query_ball_point([x_m, y_m], detection_radius_m)
-        for idx in nearby_indices:
-            cam_id = camera_ids[idx]
-            if cam_id not in seen_cameras:
-                camera_hits.append(cam_id)
-                seen_cameras.add(cam_id)
+        for node in route:
+            if node not in node_coords:
+                continue
+            lat, lon = node_coords[node]
+            nearby_cam_ids = _query_nearby_cameras_kdtree(
+                lat=lat,
+                lon=lon,
+                camera_tree=camera_tree,
+                camera_ids=camera_ids,
+                detection_radius_m=detection_radius_m,
+            )
+            for cam_id in nearby_cam_ids:
+                if cam_id not in seen_cameras:
+                    camera_hits.append(cam_id)
+                    seen_cameras.add(cam_id)
 
     return route, camera_hits, route_length
 
@@ -915,6 +1060,9 @@ def simulate_road_network_trips(
     # Parallel processing
     n_workers: int = 1,  # Set > 1 to enable multiprocessing
     mp_chunksize: int = 1,
+    camera_query_backend: str = "scipy-kdtree",
+    camera_query_cuda_batch_size: int = 256,
+    camera_query_cuda_min_work: int = 2_000_000,
     traffic_blend_factor: float = 0.7,
     lambda_traffic: float = 0.5,
     # Trip distance constraints
@@ -950,6 +1098,9 @@ def simulate_road_network_trips(
         edge_traffic_weights: Edge-level traffic weights for route choice
         traffic_blend_factor: How much to weight traffic vs degree (0-1)
         lambda_traffic: Weight for traffic preference in route utility
+        camera_query_backend: scipy-kdtree | torch-cuda | auto
+        camera_query_cuda_batch_size: Batch size for CUDA route-node processing
+        camera_query_cuda_min_work: Minimum (route_nodes * cameras) before CUDA path activates
         min_trip_distance_m: Minimum trip distance (default 5 miles)
         max_trip_distance_m: Maximum trip distance (default 10 miles)
 
@@ -960,14 +1111,30 @@ def simulate_road_network_trips(
         - network_stats: Road network size, camera coverage, P(observation)
     """
     rng = np.random.default_rng(seed)
+    active_camera_query_backend = resolve_camera_query_backend(camera_query_backend, n_workers=n_workers)
+    if camera_query_cuda_batch_size <= 0:
+        raise ValueError("camera_query_cuda_batch_size must be >= 1")
+    if camera_query_cuda_min_work <= 0:
+        raise ValueError("camera_query_cuda_min_work must be >= 1")
 
     if verbose:
         print(f"\n{'='*60}")
         print(f"ROAD NETWORK SIMULATION: {region.upper()}")
         print(f"{'='*60}")
+        print(
+            "Camera query backend: "
+            f"requested={camera_query_backend} active={active_camera_query_backend}"
+        )
 
     # Load cameras
     camera_positions, camera_tree, camera_ids = load_cameras(camera_geojson_path)
+    camera_query_payload = build_camera_query_payload(
+        camera_positions=camera_positions,
+        camera_ids=camera_ids,
+        camera_query_backend=active_camera_query_backend,
+        cuda_batch_size=camera_query_cuda_batch_size,
+        cuda_min_work=camera_query_cuda_min_work,
+    )
 
     if not camera_positions:
         print(f"No cameras found for {region}")
@@ -1077,7 +1244,7 @@ def simulate_road_network_trips(
             camera_tree, camera_ids, A_work, A_home, A_other,
             edge_traffic_weights, k_shortest, p_return, detection_radius_m,
             lambda_traffic, min_trip_distance_m, max_trip_distance_m,
-            n_trips_per_vehicle, seed
+            n_trips_per_vehicle, seed, active_camera_query_backend, camera_query_payload
         )
 
         trajectories_by_idx = [None] * len(worker_args)
@@ -1165,6 +1332,8 @@ def simulate_road_network_trips(
                         detection_radius_m=detection_radius_m,
                         edge_traffic_weights=edge_traffic_weights,
                         lambda_traffic=lambda_traffic,
+                        camera_query_backend=active_camera_query_backend,
+                        camera_query_payload=camera_query_payload,
                         rng=rng,
                     )
 
@@ -1242,6 +1411,10 @@ def simulate_road_network_trips(
             'h3_resolution': h3_resolution,
             'seed': seed,
             'mp_chunksize': mp_chunksize,
+            'camera_query_backend_requested': camera_query_backend,
+            'camera_query_backend': active_camera_query_backend,
+            'camera_query_cuda_batch_size': int(camera_query_cuda_batch_size),
+            'camera_query_cuda_min_work': int(camera_query_cuda_min_work),
         },
     }
 

@@ -114,6 +114,13 @@ def matches_signature(summary_path: Path, expected: dict[str, Any]) -> bool:
         int(run_params.get("n_trips", -1)) == int(expected["n_trips"]),
         int(run_params.get("seed", -1)) == int(expected["seed"]),
         int(run_params.get("mp_chunksize", 1)) == int(expected.get("mp_chunksize", 1)),
+        str(run_params.get("camera_query_backend", "scipy-kdtree")) == str(
+            expected.get("camera_query_backend", "scipy-kdtree")
+        ),
+        int(run_params.get("camera_query_cuda_batch_size", 256))
+        == int(expected.get("camera_query_cuda_batch_size", 256)),
+        int(run_params.get("camera_query_cuda_min_work", 2000000))
+        == int(expected.get("camera_query_cuda_min_work", 2000000)),
         int(run_params.get("k_shortest", -1)) == int(expected["k_shortest"]),
         abs(float(run_params.get("p_return", -1.0)) - float(expected["p_return"])) < 1e-12,
         abs(float(run_params.get("detection_radius_m", -1.0)) - float(expected["detection_radius_m"])) < 1e-9,
@@ -176,6 +183,9 @@ def main() -> int:
     parser.add_argument("--n-trips", type=int, default=10)
     parser.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) - 2))
     parser.add_argument("--mp-chunksize", type=int, default=2)
+    parser.add_argument("--camera-query-backend", type=str, default="scipy-kdtree")
+    parser.add_argument("--camera-query-cuda-batch-size", type=int, default=256)
+    parser.add_argument("--camera-query-cuda-min-work", type=int, default=2000000)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--k-shortest", type=int, default=3)
     parser.add_argument("--p-return", type=float, default=0.6)
@@ -202,6 +212,12 @@ def main() -> int:
         raise ValueError("--blas-threads must be >= 1")
     if args.mp_chunksize <= 0:
         raise ValueError("--mp-chunksize must be >= 1")
+    if args.camera_query_backend.strip().lower() not in {"scipy-kdtree", "torch-cuda", "auto"}:
+        raise ValueError("--camera-query-backend must be one of: scipy-kdtree, torch-cuda, auto")
+    if args.camera_query_cuda_batch_size <= 0:
+        raise ValueError("--camera-query-cuda-batch-size must be >= 1")
+    if args.camera_query_cuda_min_work <= 0:
+        raise ValueError("--camera-query-cuda-min-work must be >= 1")
 
     for env_var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
         os.environ[env_var] = str(args.blas_threads)
@@ -264,6 +280,9 @@ def main() -> int:
             "n_trips": args.n_trips,
             "workers": args.workers,
             "mp_chunksize": args.mp_chunksize,
+            "camera_query_backend": args.camera_query_backend,
+            "camera_query_cuda_batch_size": args.camera_query_cuda_batch_size,
+            "camera_query_cuda_min_work": args.camera_query_cuda_min_work,
             "seed": args.seed,
             "k_shortest": args.k_shortest,
             "p_return": args.p_return,
@@ -438,6 +457,9 @@ def main() -> int:
             "n_trips": args.n_trips,
             "seed": args.seed,
             "mp_chunksize": args.mp_chunksize,
+            "camera_query_backend": args.camera_query_backend,
+            "camera_query_cuda_batch_size": args.camera_query_cuda_batch_size,
+            "camera_query_cuda_min_work": args.camera_query_cuda_min_work,
             "k_shortest": args.k_shortest,
             "p_return": args.p_return,
             "detection_radius_m": args.detection_radius_m,
@@ -486,6 +508,12 @@ def main() -> int:
             str(args.workers),
             "--mp-chunksize",
             str(args.mp_chunksize),
+            "--camera-query-backend",
+            str(args.camera_query_backend),
+            "--camera-query-cuda-batch-size",
+            str(args.camera_query_cuda_batch_size),
+            "--camera-query-cuda-min-work",
+            str(args.camera_query_cuda_min_work),
             "--seed",
             str(args.seed),
             "--k-shortest",
