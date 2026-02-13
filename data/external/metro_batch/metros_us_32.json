@@ -94,6 +94,19 @@
       ]
     },
     {
+      "id": "norfolk_va",
+      "display_name": "Virginia Beach-Norfolk-Newport News",
+      "primary_state": "VA",
+      "center_lat": 36.8529,
+      "center_lon": -76.2859,
+      "radius_km": 35.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/VA/VDOT_Bidirectional_Traffic_Volume_2024.shp"
+    },
+    {
       "id": "miami_fl",
       "display_name": "Miami-Fort Lauderdale-West Palm Beach",
       "primary_state": "FL",
@@ -169,6 +182,19 @@
       "center_lat": 37.7749,
       "center_lon": -122.4194,
       "radius_km": 40.0,
+      "boundary": {
+        "mode": "circle_proxy",
+        "source": "metro_core"
+      },
+      "aadt_path": "data/raw/aadt_us32/CA/Traffic_Volumes_AADT.shp"
+    },
+    {
+      "id": "san_jose_ca",
+      "display_name": "San Jose-Sunnyvale-Santa Clara",
+      "primary_state": "CA",
+      "center_lat": 37.3382,
+      "center_lon": -121.8863,
+      "radius_km": 30.0,
       "boundary": {
         "mode": "circle_proxy",
         "source": "metro_core"
