@@ -249,49 +249,17 @@ def resolve_camera_query_backend(requested_backend: str, n_workers: int) -> str:
     """
     Resolve requested camera query backend.
 
-    Options:
-    - scipy-kdtree
-    - torch-cuda
-    - torch-cuda-service
-    - auto
+    Reverted to CPU-only backend for production reliability.
+    Accepted request values are normalized, but execution always uses scipy-kdtree.
     """
     mode = (requested_backend or "scipy-kdtree").strip().lower()
     if mode not in {"scipy-kdtree", "torch-cuda", "torch-cuda-service", "auto"}:
         raise ValueError(f"Unsupported camera query backend: {requested_backend}")
-
-    if mode == "auto":
-        if torch is not None and torch.cuda.is_available():
-            if n_workers == 1:
-                return "torch-cuda"
-            return "torch-cuda-service"
-        return "scipy-kdtree"
-
-    if mode == "torch-cuda":
-        if torch is None:
-            print("[WARN] torch-cuda requested but torch is not installed. Falling back to scipy-kdtree.")
-            return "scipy-kdtree"
-        if not torch.cuda.is_available():
-            print("[WARN] torch-cuda requested but CUDA is unavailable. Falling back to scipy-kdtree.")
-            return "scipy-kdtree"
-        if n_workers > 1:
-            print(
-                "[WARN] torch-cuda requested with n_workers > 1. "
-                "Switching to torch-cuda-service backend."
-            )
-            return "torch-cuda-service"
-        return "torch-cuda"
-
-    if mode == "torch-cuda-service":
-        if torch is None:
-            print("[WARN] torch-cuda-service requested but torch is not installed. Falling back to scipy-kdtree.")
-            return "scipy-kdtree"
-        if not torch.cuda.is_available():
-            print("[WARN] torch-cuda-service requested but CUDA is unavailable. Falling back to scipy-kdtree.")
-            return "scipy-kdtree"
-        if n_workers <= 1:
-            return "torch-cuda"
-        return "torch-cuda-service"
-
+    if mode != "scipy-kdtree":
+        print(
+            "[INFO] CPU-only mode active for reliability; "
+            f"ignoring requested backend '{mode}' and using scipy-kdtree."
+        )
     return "scipy-kdtree"
 
 

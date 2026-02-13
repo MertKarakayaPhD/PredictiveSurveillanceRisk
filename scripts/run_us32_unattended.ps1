@@ -21,7 +21,7 @@ param(
     [bool]$ResumeCheckpoint = $true,
     [bool]$StoreTripMetadata = $true,
     [bool]$StableOutputSubdir = $true,
-    [bool]$PaperLock = $false,
+    [bool]$PaperLock = $true,
     [string]$PythonExe = "python",
     [string]$LogsRoot = "logs/us32_unattended",
     [int]$KeepLastRuns = 12,
