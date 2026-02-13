@@ -21,6 +21,7 @@ param(
     [bool]$ResumeCheckpoint = $true,
     [bool]$StoreTripMetadata = $true,
     [bool]$StableOutputSubdir = $true,
+    [bool]$PaperLock = $false,
     [string]$PythonExe = "python",
     [string]$LogsRoot = "logs/us32_unattended",
     [int]$KeepLastRuns = 12,
@@ -47,8 +48,8 @@ if ($Workers -le 0 -or $MinWorkers -le 0 -or $WorkerStepDown -le 0 -or $MaxRetri
 if ($MinWorkers -gt $Workers) { $MinWorkers = $Workers }
 if ($BlasThreads -le 0) { throw "BlasThreads must be >= 1" }
 if ($MpChunksize -le 0) { throw "MpChunksize must be >= 1" }
-if ($CameraQueryBackend -notin @("scipy-kdtree", "torch-cuda", "auto")) {
-    throw "CameraQueryBackend must be one of: scipy-kdtree, torch-cuda, auto"
+if ($CameraQueryBackend -notin @("scipy-kdtree", "torch-cuda", "torch-cuda-service", "auto")) {
+    throw "CameraQueryBackend must be one of: scipy-kdtree, torch-cuda, torch-cuda-service, auto"
 }
 if ($CameraQueryCudaBatchSize -le 0) { throw "CameraQueryCudaBatchSize must be >= 1" }
 if ($CameraQueryCudaMinWork -le 0) { throw "CameraQueryCudaMinWork must be >= 1" }
@@ -203,6 +204,7 @@ $state = @{
         resume_checkpoint = [bool]$ResumeCheckpoint
         store_trip_metadata = [bool]$StoreTripMetadata
         stable_output_subdir = [bool]$StableOutputSubdir
+        paper_lock = [bool]$PaperLock
         skip_preflight = [bool]$SkipPreflight
         require_fresh_data = [bool]$RequireFreshData
         include_chicago = [bool]$IncludeChicago
@@ -236,7 +238,7 @@ Write-Log (
     "path_cache_size=$PathCacheSize, route_cache_size=$RouteCacheSize, " +
     "checkpoint_interval_vehicles=$CheckpointIntervalVehicles, " +
     "resume_checkpoint=$ResumeCheckpoint, store_trip_metadata=$StoreTripMetadata, " +
-    "stable_output_subdir=$StableOutputSubdir"
+    "stable_output_subdir=$StableOutputSubdir, paper_lock=$PaperLock"
 )
 
 $env:OMP_NUM_THREADS = "$BlasThreads"
@@ -310,6 +312,7 @@ foreach ($metro in $queue) {
         if ($ResumeCheckpoint) { $cmd += "--resume-checkpoint" } else { $cmd += "--no-resume-checkpoint" }
         if ($StoreTripMetadata) { $cmd += "--store-trip-metadata" } else { $cmd += "--no-store-trip-metadata" }
         if ($StableOutputSubdir) { $cmd += "--stable-output-subdir" } else { $cmd += "--no-stable-output-subdir" }
+        if ($PaperLock) { $cmd += "--paper-lock" } else { $cmd += "--no-paper-lock" }
         if ($DryRun) { $cmd += "--dry-run" }
 
         $rc = 0

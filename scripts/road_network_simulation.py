@@ -105,6 +105,8 @@ def _checkpoint_signature(
     min_trip_distance_m: float,
     max_trip_distance_m: float,
     camera_query_backend: str,
+    destination_candidate_pool_size: int,
+    store_trip_metadata: bool,
 ) -> dict:
     return {
         "region": str(region),
@@ -117,6 +119,8 @@ def _checkpoint_signature(
         "min_trip_distance_m": float(min_trip_distance_m),
         "max_trip_distance_m": float(max_trip_distance_m),
         "camera_query_backend": str(camera_query_backend),
+        "destination_candidate_pool_size": int(destination_candidate_pool_size),
+        "store_trip_metadata": bool(store_trip_metadata),
     }
 
 
@@ -248,15 +252,18 @@ def resolve_camera_query_backend(requested_backend: str, n_workers: int) -> str:
     Options:
     - scipy-kdtree
     - torch-cuda
+    - torch-cuda-service
     - auto
     """
     mode = (requested_backend or "scipy-kdtree").strip().lower()
-    if mode not in {"scipy-kdtree", "torch-cuda", "auto"}:
+    if mode not in {"scipy-kdtree", "torch-cuda", "torch-cuda-service", "auto"}:
         raise ValueError(f"Unsupported camera query backend: {requested_backend}")
 
     if mode == "auto":
-        if torch is not None and torch.cuda.is_available() and n_workers == 1:
-            return "torch-cuda"
+        if torch is not None and torch.cuda.is_available():
+            if n_workers == 1:
+                return "torch-cuda"
+            return "torch-cuda-service"
         return "scipy-kdtree"
 
     if mode == "torch-cuda":
@@ -269,10 +276,21 @@ def resolve_camera_query_backend(requested_backend: str, n_workers: int) -> str:
         if n_workers > 1:
             print(
                 "[WARN] torch-cuda requested with n_workers > 1. "
-                "Falling back to scipy-kdtree to avoid multi-process CUDA contention."
+                "Switching to torch-cuda-service backend."
             )
-            return "scipy-kdtree"
+            return "torch-cuda-service"
         return "torch-cuda"
+
+    if mode == "torch-cuda-service":
+        if torch is None:
+            print("[WARN] torch-cuda-service requested but torch is not installed. Falling back to scipy-kdtree.")
+            return "scipy-kdtree"
+        if not torch.cuda.is_available():
+            print("[WARN] torch-cuda-service requested but CUDA is unavailable. Falling back to scipy-kdtree.")
+            return "scipy-kdtree"
+        if n_workers <= 1:
+            return "torch-cuda"
+        return "torch-cuda-service"
 
     return "scipy-kdtree"
 
@@ -384,16 +402,110 @@ def _collect_camera_hits_torch_cuda(
     return camera_hits
 
 
+def _gpu_camera_query_server(
+    request_queue,
+    response_queues: list,
+    node_coords: dict[int, tuple[float, float]],
+    camera_positions: dict[int, tuple[float, float]],
+    camera_ids: list[int],
+    cuda_batch_size: int,
+    route_cache_size: int,
+):
+    """
+    Dedicated GPU service process for multi-worker camera proximity queries.
+    """
+    payload = build_camera_query_payload(
+        camera_positions=camera_positions,
+        camera_ids=camera_ids,
+        camera_query_backend="torch-cuda",
+        cuda_batch_size=cuda_batch_size,
+        cuda_min_work=1,
+    )
+    if payload is None:
+        while True:
+            msg = request_queue.get()
+            if msg is None:
+                break
+            slot, req_id, _route_nodes, _radius_m = msg
+            response_queues[slot].put((req_id, tuple(), "cuda_payload_unavailable"))
+        return
+
+    route_cache = OrderedDict()
+    while True:
+        msg = request_queue.get()
+        if msg is None:
+            break
+
+        slot, req_id, route_nodes, detection_radius_m = msg
+        try:
+            key = (tuple(route_nodes), float(detection_radius_m))
+            cached = _cache_get(route_cache, key)
+            if cached is not None:
+                response_queues[slot].put((req_id, cached, None))
+                continue
+
+            hits = _collect_camera_hits_torch_cuda(
+                route=list(route_nodes),
+                node_coords=node_coords,
+                payload=payload,
+                detection_radius_m=float(detection_radius_m),
+            )
+            hits_tuple = tuple(hits)
+            _cache_put(route_cache, key, hits_tuple, route_cache_size)
+            response_queues[slot].put((req_id, hits_tuple, None))
+        except Exception as exc:
+            response_queues[slot].put((req_id, tuple(), str(exc)))
+
+
+def _collect_camera_hits_torch_cuda_service(
+    route: list[int],
+    service: dict,
+    detection_radius_m: float,
+) -> list[int]:
+    """
+    Query camera hits via dedicated GPU service process.
+    """
+    req_id = int(service["next_req_id"])
+    service["next_req_id"] = req_id + 1
+
+    service["request_queue"].put(
+        (service["worker_slot"], req_id, tuple(route), float(detection_radius_m))
+    )
+    while True:
+        resp_id, hits_tuple, error = service["response_queue"].get()
+        if int(resp_id) != req_id:
+            continue
+        if error:
+            raise RuntimeError(f"GPU camera query service error: {error}")
+        return list(hits_tuple)
+
+
 def _init_worker(G_simple_data, G_road_data, node_coords, camera_positions,
                  camera_tree_data, camera_ids, A_work, A_home, A_other,
                  edge_traffic_weights, k_shortest, p_return, detection_radius_m,
                  lambda_traffic, min_trip_distance_m, max_trip_distance_m,
                  n_trips_per_vehicle, base_seed,
                  camera_query_backend, camera_query_payload,
+                 camera_query_service_init,
                  destination_candidate_pool_size, path_cache_size, route_cache_size,
                  store_trip_metadata):
     """Initialize worker process with shared data."""
     global _worker_data
+    camera_query_service = None
+    if camera_query_service_init is not None:
+        with camera_query_service_init["worker_counter_lock"]:
+            slot = int(camera_query_service_init["worker_counter"].value)
+            camera_query_service_init["worker_counter"].value = slot + 1
+        response_queues = camera_query_service_init["response_queues"]
+        if response_queues:
+            slot = slot % len(response_queues)
+            camera_query_service = {
+                "worker_slot": int(slot),
+                "request_queue": camera_query_service_init["request_queue"],
+                "response_queue": response_queues[slot],
+                "next_req_id": 0,
+            }
+
     _worker_data = {
         'G_simple': G_simple_data,
         'G_road': G_road_data,
@@ -415,6 +527,7 @@ def _init_worker(G_simple_data, G_road_data, node_coords, camera_positions,
         'base_seed': base_seed,
         'camera_query_backend': camera_query_backend,
         'camera_query_payload': camera_query_payload,
+        'camera_query_service': camera_query_service,
         'destination_candidate_pool_size': destination_candidate_pool_size,
         'path_cache_size': int(path_cache_size),
         'route_cache_size': int(route_cache_size),
@@ -457,6 +570,7 @@ def _simulate_single_vehicle(args):
     base_seed = _worker_data['base_seed']
     camera_query_backend = _worker_data['camera_query_backend']
     camera_query_payload = _worker_data['camera_query_payload']
+    camera_query_service = _worker_data['camera_query_service']
     destination_candidate_pool_size = _worker_data['destination_candidate_pool_size']
     path_cache_size = _worker_data['path_cache_size']
     route_cache_size = _worker_data['route_cache_size']
@@ -523,6 +637,7 @@ def _simulate_single_vehicle(args):
                 lambda_traffic=lambda_traffic,
                 camera_query_backend=camera_query_backend,
                 camera_query_payload=camera_query_payload,
+                camera_query_service=camera_query_service,
                 ksp_cache=ksp_cache,
                 path_cache_size=path_cache_size,
                 route_obs_cache=route_obs_cache,
@@ -1076,6 +1191,7 @@ def route_and_observe(
     lambda_traffic: float = 0.5,
     camera_query_backend: str = "scipy-kdtree",
     camera_query_payload: dict | None = None,
+    camera_query_service: dict | None = None,
     ksp_cache: OrderedDict | None = None,
     path_cache_size: int = 0,
     route_obs_cache: OrderedDict | None = None,
@@ -1184,18 +1300,27 @@ def route_and_observe(
         return route, list(cached_hits), route_length
 
     use_cuda_query = False
+    use_cuda_service_query = False
     if camera_query_backend == "torch-cuda" and camera_query_payload is not None:
         n_route_nodes = len({n for n in route if n in node_coords})
         n_cameras = len(camera_query_payload.get("camera_ids", []))
         work = n_route_nodes * n_cameras
         min_work = int(camera_query_payload.get("cuda_min_work", 1))
         use_cuda_query = work >= min_work
+    elif camera_query_backend == "torch-cuda-service" and camera_query_service is not None:
+        use_cuda_service_query = True
 
     if use_cuda_query:
         camera_hits = _collect_camera_hits_torch_cuda(
             route=route,
             node_coords=node_coords,
             payload=camera_query_payload,
+            detection_radius_m=detection_radius_m,
+        )
+    elif use_cuda_service_query:
+        camera_hits = _collect_camera_hits_torch_cuda_service(
+            route=route,
+            service=camera_query_service,
             detection_radius_m=detection_radius_m,
         )
     else:
@@ -1497,6 +1622,8 @@ def simulate_road_network_trips(
         min_trip_distance_m=min_trip_distance_m,
         max_trip_distance_m=max_trip_distance_m,
         camera_query_backend=active_camera_query_backend,
+        destination_candidate_pool_size=destination_candidate_pool_size,
+        store_trip_metadata=store_trip_metadata,
     )
 
     if checkpoint_dir:
@@ -1588,7 +1715,39 @@ def simulate_road_network_trips(
 
     if n_workers > 1:
         # Parallel execution using multiprocessing
-        from multiprocessing import Pool
+        from multiprocessing import Lock, Pool, Process, Queue, Value
+
+        camera_query_service_init = None
+        gpu_service_proc = None
+        gpu_request_queue = None
+        gpu_response_queues = None
+
+        if active_camera_query_backend == "torch-cuda-service":
+            gpu_request_queue = Queue(maxsize=max(64, n_workers * 8))
+            gpu_response_queues = [Queue(maxsize=max(32, mp_chunksize * 8)) for _ in range(n_workers)]
+            worker_counter = Value("i", 0)
+            worker_counter_lock = Lock()
+            camera_query_service_init = {
+                "request_queue": gpu_request_queue,
+                "response_queues": gpu_response_queues,
+                "worker_counter": worker_counter,
+                "worker_counter_lock": worker_counter_lock,
+            }
+            gpu_service_proc = Process(
+                target=_gpu_camera_query_server,
+                args=(
+                    gpu_request_queue,
+                    gpu_response_queues,
+                    node_coords,
+                    camera_positions,
+                    camera_ids,
+                    int(camera_query_cuda_batch_size),
+                    int(route_cache_size),
+                ),
+            )
+            gpu_service_proc.start()
+            if verbose:
+                print("[INFO] Started dedicated CUDA camera-query service process.")
 
         # Initialize pool with shared data
         init_args = (
@@ -1597,32 +1756,46 @@ def simulate_road_network_trips(
             edge_traffic_weights, k_shortest, p_return, detection_radius_m,
             lambda_traffic, min_trip_distance_m, max_trip_distance_m,
             n_trips_per_vehicle, seed, active_camera_query_backend, camera_query_payload,
+            camera_query_service_init,
             destination_candidate_pool_size, path_cache_size, route_cache_size, store_trip_metadata
         )
 
         if mp_chunksize <= 0:
             raise ValueError("mp_chunksize must be >= 1")
 
-        with Pool(processes=n_workers, initializer=_init_worker, initargs=init_args) as pool:
-            # Use unordered completion for smoother progress updates.
-            for vehicle_idx, trajectory, trip_meta_list in tqdm(
-                pool.imap_unordered(_simulate_single_vehicle, pending_worker_args, chunksize=mp_chunksize),
-                total=len(pending_worker_args),
-                disable=not verbose,
-                desc="Simulating vehicles (parallel)",
-            ):
-                trajectories_by_idx[vehicle_idx] = trajectory
-                if store_trip_metadata:
-                    trip_metadata_by_idx[vehicle_idx] = trip_meta_list
+        try:
+            with Pool(processes=n_workers, initializer=_init_worker, initargs=init_args) as pool:
+                # Use unordered completion for smoother progress updates.
+                for vehicle_idx, trajectory, trip_meta_list in tqdm(
+                    pool.imap_unordered(_simulate_single_vehicle, pending_worker_args, chunksize=mp_chunksize),
+                    total=len(pending_worker_args),
+                    disable=not verbose,
+                    desc="Simulating vehicles (parallel)",
+                ):
+                    trajectories_by_idx[vehicle_idx] = trajectory
+                    if store_trip_metadata:
+                        trip_metadata_by_idx[vehicle_idx] = trip_meta_list
 
-                _update_trip_stats(trip_meta_list)
-                completed_vehicle_indices.add(vehicle_idx)
+                    _update_trip_stats(trip_meta_list)
+                    completed_vehicle_indices.add(vehicle_idx)
 
-                if checkpoint_root is not None:
-                    checkpoint_pending_records.append(
-                        (vehicle_idx, trajectory, trip_meta_list if store_trip_metadata else [])
-                    )
-                    _flush_checkpoint_if_needed(force=False)
+                    if checkpoint_root is not None:
+                        checkpoint_pending_records.append(
+                            (vehicle_idx, trajectory, trip_meta_list if store_trip_metadata else [])
+                        )
+                        _flush_checkpoint_if_needed(force=False)
+        finally:
+            if gpu_service_proc is not None:
+                try:
+                    gpu_request_queue.put(None)
+                except Exception:
+                    pass
+                gpu_service_proc.join(timeout=15)
+                if gpu_service_proc.is_alive():
+                    gpu_service_proc.terminate()
+                    gpu_service_proc.join(timeout=5)
+                if verbose:
+                    print("[INFO] CUDA camera-query service process stopped.")
 
     else:
         # Sequential execution
@@ -1682,6 +1855,7 @@ def simulate_road_network_trips(
                         lambda_traffic=lambda_traffic,
                         camera_query_backend=active_camera_query_backend,
                         camera_query_payload=camera_query_payload,
+                        camera_query_service=None,
                         ksp_cache=ksp_cache,
                         path_cache_size=path_cache_size,
                         route_obs_cache=route_obs_cache,

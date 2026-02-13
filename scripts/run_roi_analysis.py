@@ -707,7 +707,7 @@ def main() -> int:
         "--camera-query-backend",
         type=str,
         default="scipy-kdtree",
-        help="Camera query backend: scipy-kdtree | torch-cuda | auto",
+        help="Camera query backend: scipy-kdtree | torch-cuda | torch-cuda-service | auto",
     )
     parser.add_argument(
         "--camera-query-cuda-batch-size",
@@ -757,6 +757,12 @@ def main() -> int:
         default=True,
         help="Keep full per-trip metadata in output (disable to reduce memory/disk).",
     )
+    parser.add_argument(
+        "--paper-lock",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Enforce methodology-safe settings for manuscript runs.",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--k-shortest", type=int, default=3)
     parser.add_argument("--p-return", type=float, default=0.6)
@@ -795,6 +801,11 @@ def main() -> int:
         raise ValueError("--workers must be >= 1")
     if args.mp_chunksize <= 0:
         raise ValueError("--mp-chunksize must be >= 1")
+    args.camera_query_backend = args.camera_query_backend.strip().lower()
+    if args.camera_query_backend not in {"scipy-kdtree", "torch-cuda", "torch-cuda-service", "auto"}:
+        raise ValueError(
+            "--camera-query-backend must be one of: scipy-kdtree, torch-cuda, torch-cuda-service, auto"
+        )
     if args.camera_query_cuda_batch_size <= 0:
         raise ValueError("--camera-query-cuda-batch-size must be >= 1")
     if args.camera_query_cuda_min_work <= 0:
@@ -807,6 +818,14 @@ def main() -> int:
         raise ValueError("--route-cache-size must be >= 0")
     if args.checkpoint_interval_vehicles <= 0:
         raise ValueError("--checkpoint-interval-vehicles must be >= 1")
+
+    if args.paper_lock:
+        # Paper-lock keeps methodology-aligned, exact destination sampling and CPU camera query path.
+        args.camera_query_backend = "scipy-kdtree"
+        args.destination_candidate_pool_size = 0
+        args.store_trip_metadata = True
+        print("[INFO] Paper-lock enabled: forcing camera_query_backend=scipy-kdtree, "
+              "destination_candidate_pool_size=0, store_trip_metadata=True")
 
     roi_name = slugify(args.name)
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1074,6 +1093,7 @@ def main() -> int:
     summary = {
         "generated_at_utc": utc_now_iso(),
         "name": roi_name,
+        "paper_lock": bool(args.paper_lock),
         "center": {"lat": center_lat, "lon": center_lon},
         "radius_km": analysis_radius_km,
         "radius_input_km": args.radius_km,
@@ -1139,6 +1159,7 @@ def main() -> int:
             ),
             "resume_checkpoint": bool(args.resume_checkpoint),
             "store_trip_metadata": bool(args.store_trip_metadata),
+            "paper_lock": bool(args.paper_lock),
             "seed": args.seed,
             "k_shortest": args.k_shortest,
             "p_return": args.p_return,

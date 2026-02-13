@@ -133,6 +133,8 @@ def matches_signature(summary_path: Path, expected: dict[str, Any]) -> bool:
         == bool(expected.get("resume_checkpoint", True)),
         bool(run_params.get("store_trip_metadata", True))
         == bool(expected.get("store_trip_metadata", True)),
+        bool(run_params.get("paper_lock", False))
+        == bool(expected.get("paper_lock", False)),
         int(run_params.get("k_shortest", -1)) == int(expected["k_shortest"]),
         abs(float(run_params.get("p_return", -1.0)) - float(expected["p_return"])) < 1e-12,
         abs(float(run_params.get("detection_radius_m", -1.0)) - float(expected["detection_radius_m"])) < 1e-9,
@@ -218,6 +220,12 @@ def main() -> int:
         default=True,
         help="Reuse a per-metro output subdir so retries resume from checkpoints.",
     )
+    parser.add_argument(
+        "--paper-lock",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Enforce methodology-safe settings for manuscript runs.",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--k-shortest", type=int, default=3)
     parser.add_argument("--p-return", type=float, default=0.6)
@@ -244,8 +252,11 @@ def main() -> int:
         raise ValueError("--blas-threads must be >= 1")
     if args.mp_chunksize <= 0:
         raise ValueError("--mp-chunksize must be >= 1")
-    if args.camera_query_backend.strip().lower() not in {"scipy-kdtree", "torch-cuda", "auto"}:
-        raise ValueError("--camera-query-backend must be one of: scipy-kdtree, torch-cuda, auto")
+    args.camera_query_backend = args.camera_query_backend.strip().lower()
+    if args.camera_query_backend not in {"scipy-kdtree", "torch-cuda", "torch-cuda-service", "auto"}:
+        raise ValueError(
+            "--camera-query-backend must be one of: scipy-kdtree, torch-cuda, torch-cuda-service, auto"
+        )
     if args.camera_query_cuda_batch_size <= 0:
         raise ValueError("--camera-query-cuda-batch-size must be >= 1")
     if args.camera_query_cuda_min_work <= 0:
@@ -258,6 +269,13 @@ def main() -> int:
         raise ValueError("--route-cache-size must be >= 0")
     if args.checkpoint_interval_vehicles <= 0:
         raise ValueError("--checkpoint-interval-vehicles must be >= 1")
+
+    if args.paper_lock:
+        args.camera_query_backend = "scipy-kdtree"
+        args.destination_candidate_pool_size = 0
+        args.store_trip_metadata = True
+        print("[INFO] Paper-lock enabled: forcing camera_query_backend=scipy-kdtree, "
+              "destination_candidate_pool_size=0, store_trip_metadata=True")
 
     for env_var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
         os.environ[env_var] = str(args.blas_threads)
@@ -330,6 +348,7 @@ def main() -> int:
             "resume_checkpoint": args.resume_checkpoint,
             "store_trip_metadata": args.store_trip_metadata,
             "stable_output_subdir": args.stable_output_subdir,
+            "paper_lock": args.paper_lock,
             "seed": args.seed,
             "k_shortest": args.k_shortest,
             "p_return": args.p_return,
@@ -513,6 +532,7 @@ def main() -> int:
             "checkpoint_interval_vehicles": args.checkpoint_interval_vehicles,
             "resume_checkpoint": args.resume_checkpoint,
             "store_trip_metadata": args.store_trip_metadata,
+            "paper_lock": args.paper_lock,
             "k_shortest": args.k_shortest,
             "p_return": args.p_return,
             "detection_radius_m": args.detection_radius_m,
@@ -602,6 +622,10 @@ def main() -> int:
             cmd.append("--store-trip-metadata")
         else:
             cmd.append("--no-store-trip-metadata")
+        if args.paper_lock:
+            cmd.append("--paper-lock")
+        else:
+            cmd.append("--no-paper-lock")
         if args.stable_output_subdir:
             cmd.extend(["--output-subdir", f"{metro_id}_active"])
         if aadt_path is not None:
